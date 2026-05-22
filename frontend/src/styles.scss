@@ -1,0 +1,146 @@
+@use '@angular/material' as mat;
+
+// Global styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Roboto', sans-serif;
+  background-color: #f5f5f5;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mr-8 {
+  margin-right: 8px;
+}
+
+.ml-8 {
+  margin-left: 8px;
+}
+
+// Card styles
+mat-card {
+  margin-bottom: 16px;
+}
+
+// Loading spinner
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+// Status badges
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  
+  &.pending {
+    background-color: #fff3e0;
+    color: #e65100;
+  }
+  
+  &.applied {
+    background-color: #e3f2fd;
+    color: #1565c0;
+  }
+  
+  &.interview {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  &.offer {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  &.rejected {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+  
+  &.ghosted {
+    background-color: #f5f5f5;
+    color: #616161;
+  }
+}
+
+// Match score
+.match-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 14px;
+  
+  &.high {
+    background-color: #4caf50;
+    color: white;
+  }
+  
+  &.medium {
+    background-color: #ff9800;
+    color: white;
+  }
+  
+  &.low {
+    background-color: #f44336;
+    color: white;
+  }
+}
+
+// Table styles
+table {
+  width: 100%;
+}
+
+// Snackbar styles
+.success-snackbar {
+  background-color: #4caf50;
+  color: white;
+}
+
+.error-snackbar {
+  background-color: #f44336;
+  color: white;
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+}
