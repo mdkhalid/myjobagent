@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
     
+    # Job Scraping
+    JOOBLE_API_KEY: str = ""
+    FINDWORK_API_KEY: str = ""
+    
     # File Storage
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB

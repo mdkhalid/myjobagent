@@ -36,13 +36,14 @@ export class ApplicationService {
     return this.http.get<Application[]>(this.apiUrl, { params });
   }
 
-  createApplication(jobId: string, resumeId?: string, generateCoverLetter: boolean = false): Observable<Application> {
+  createApplication(jobId: string, resumeId?: string, generateCoverLetter: boolean = false, submitNow: boolean = false): Observable<Application> {
+    let params = new HttpParams();
+    if (generateCoverLetter) params = params.set('generate_cover_letter', 'true');
+    if (submitNow) params = params.set('submit_now', 'true');
     return this.http.post<Application>(this.apiUrl, {
       job_id: jobId,
       resume_id: resumeId
-    }, {
-      params: generateCoverLetter ? { generate_cover_letter: 'true' } : {}
-    });
+    }, { params });
   }
 
   updateStatus(applicationId: string, status: string, notes?: string): Observable<Application> {

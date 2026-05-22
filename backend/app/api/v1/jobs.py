@@ -26,7 +26,7 @@ async def get_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(Job).filter(Job.is_active == True)
+    query = db.query(Job).filter(Job.is_active == True, Job.source != 'mock')
     
     if keywords:
         query = query.filter(
@@ -51,7 +51,7 @@ async def search_jobs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(Job).filter(Job.is_active == True)
+    query = db.query(Job).filter(Job.is_active == True, Job.source != 'mock')
     
     if params.keywords:
         query = query.filter(
@@ -132,8 +132,8 @@ async def match_jobs(
             detail="No resume found. Please upload a resume first."
         )
     
-    # Get all active jobs
-    jobs = db.query(Job).filter(Job.is_active == True).all()
+    # Get all active jobs (exclude mock data)
+    jobs = db.query(Job).filter(Job.is_active == True, Job.source != 'mock').all()
     
     # Calculate match scores
     matched_jobs = []

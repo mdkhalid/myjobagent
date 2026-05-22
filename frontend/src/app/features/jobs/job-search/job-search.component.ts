@@ -391,6 +391,7 @@ export class JobSearchComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadJobs();
+    this.loadAppliedJobs();
   }
 
   loadJobs(): void {
@@ -398,12 +399,21 @@ export class JobSearchComponent implements OnInit {
     this.jobService.getJobs({ limit: 20 }).subscribe({
       next: (response) => {
         const jobsList = Array.isArray(response) ? response : response.items;
-        this.jobs = jobsList?.map((job: Job) => ({ job, match_score: 0 })) || [];
+        this.jobs = jobsList?.filter((j: Job) => j.source !== 'mock').map((job: Job) => ({ job, match_score: 0 })) || [];
         this.isLoading = false;
       },
       error: () => {
         this.isLoading = false;
       }
+    });
+  }
+
+  loadAppliedJobs(): void {
+    this.applicationService.getApplications().subscribe({
+      next: (apps) => {
+        this.appliedJobs = new Set(apps.map(a => a.job_id));
+      },
+      error: () => {}
     });
   }
 
@@ -415,11 +425,15 @@ export class JobSearchComponent implements OnInit {
     
     this.jobService.searchJobs({ keywords, location }).subscribe({
       next: (response) => {
-        this.jobs = response.items?.map((job: Job) => ({ job, match_score: 0 })) || [];
+        this.jobs = response.items?.filter((j: Job) => j.source !== 'mock').map((job: Job) => ({ job, match_score: 0 })) || [];
         this.isSearching = false;
+        if (this.jobs.length === 0) {
+          this.snackBar.open('No jobs found. Try different keywords or scrape new jobs.', 'Close', { duration: 5000 });
+        }
       },
-      error: () => {
+      error: (err) => {
         this.isSearching = false;
+        this.snackBar.open(err.error?.detail || 'Search failed', 'Close', { duration: 5000 });
       }
     });
   }
@@ -433,8 +447,10 @@ export class JobSearchComponent implements OnInit {
         this.jobs = matches;
         this.isMatching = false;
       },
-      error: () => {
+      error: (err) => {
         this.isMatching = false;
+        const message = err.error?.detail || err.message || 'Failed to match jobs';
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }
@@ -457,10 +473,17 @@ export class JobSearchComponent implements OnInit {
   }
 
   applyToJob(job: Job): void {
-    this.applicationService.createApplication(job.id, undefined, true).subscribe({
+    this.applicationService.createApplication(job.id, undefined, true, true).subscribe({
       next: () => {
         this.appliedJobs.add(job.id);
-        this.snackBar.open('Application created successfully!', 'Close', { duration: 3000 });
+        this.snackBar.open('Application submitted! Opening job page...', 'Close', { duration: 3000 });
+        if (job.external_url) {
+          window.open(job.external_url, '_blank');
+        }
+      },
+      error: (err) => {
+        const message = err.error?.detail || err.message || 'Failed to create application';
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }

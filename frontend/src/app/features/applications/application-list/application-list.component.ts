@@ -8,7 +8,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ApplicationService, Application } from '../../../core/services/application.service';
+import { ConfirmDialogComponent } from '../../../shared/dialogs/confirm-dialog.component';
 
 @Component({
   selector: 'app-application-list',
@@ -21,7 +23,8 @@ import { ApplicationService, Application } from '../../../core/services/applicat
     MatChipsModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatDialogModule
   ],
   template: `
     <div class="container">
@@ -278,6 +281,7 @@ import { ApplicationService, Application } from '../../../core/services/applicat
 export class ApplicationListComponent implements OnInit {
   private applicationService = inject(ApplicationService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   applications: Application[] = [];
   selectedStatus = '';
@@ -296,8 +300,10 @@ export class ApplicationListComponent implements OnInit {
         this.applications = applications;
         this.isLoading = false;
       },
-      error: () => {
+      error: (err) => {
         this.isLoading = false;
+        const message = err.error?.detail || err.message || 'Failed to load applications';
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }
@@ -316,13 +322,30 @@ export class ApplicationListComponent implements OnInit {
   }
 
   deleteApplication(application: Application): void {
-    if (confirm('Are you sure you want to delete this application?')) {
-      this.applicationService.deleteApplication(application.id).subscribe({
-        next: () => {
-          this.snackBar.open('Application deleted', 'Close', { duration: 3000 });
-          this.loadApplications();
-        }
-      });
-    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Application',
+        message: `Are you sure you want to delete the application for "${application.job?.title || 'Unknown'}"?`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        icon: 'delete_forever',
+        confirmColor: 'warn'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.applicationService.deleteApplication(application.id).subscribe({
+          next: () => {
+            this.snackBar.open('Application deleted', 'Close', { duration: 3000 });
+            this.loadApplications();
+          },
+          error: (err) => {
+            const message = err.error?.detail || err.message || 'Failed to delete application';
+            this.snackBar.open(message, 'Close', { duration: 5000 });
+          }
+        });
+      }
+    });
   }
 }

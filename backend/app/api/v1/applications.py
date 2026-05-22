@@ -22,6 +22,34 @@ from app.services.auto_apply_service import submit_application
 router = APIRouter()
 
 
+def _application_to_dict(application: Application) -> dict:
+    return {
+        "id": application.id,
+        "user_id": application.user_id,
+        "job_id": application.job_id,
+        "resume_id": application.resume_id,
+        "status": application.status,
+        "applied_date": application.applied_date,
+        "notes": application.notes,
+        "match_score": application.match_score,
+        "auto_applied": application.auto_applied,
+        "cover_letter": application.cover_letter,
+        "created_at": application.created_at,
+        "updated_at": application.updated_at,
+        "job": {
+            "id": application.job.id,
+            "title": application.job.title,
+            "company": application.job.company,
+            "location": application.job.location,
+            "external_url": application.job.external_url
+        } if application.job else None,
+        "resume": {
+            "id": application.resume.id,
+            "filename": application.resume.filename
+        } if application.resume else None
+    }
+
+
 @router.get("/", response_model=List[ApplicationResponse])
 async def get_applications(
     status: Optional[ApplicationStatus] = None,
@@ -74,6 +102,7 @@ async def get_applications(
 async def create_application(
     app_data: ApplicationCreate,
     generate_cover_letter: bool = False,
+    submit_now: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -121,7 +150,8 @@ async def create_application(
         user_id=current_user.id,
         job_id=app_data.job_id,
         resume_id=resume.id if resume else None,
-        status=ApplicationStatus.PENDING,
+        status=ApplicationStatus.APPLIED if submit_now else ApplicationStatus.PENDING,
+        applied_date=datetime.now(timezone.utc) if submit_now else None,
         notes=app_data.notes
     )
     
@@ -135,8 +165,9 @@ async def create_application(
         cover_letter = generate_cover_letter(resume, job)
         application.cover_letter = cover_letter
         db.commit()
+        db.refresh(application)
     
-    return application
+    return _application_to_dict(application)
 
 
 @router.get("/{application_id}", response_model=ApplicationResponse)
@@ -156,7 +187,7 @@ async def get_application(
             detail="Application not found"
         )
     
-    return application
+    return _application_to_dict(application)
 
 
 @router.put("/{application_id}/status", response_model=ApplicationResponse)
@@ -180,12 +211,14 @@ async def update_application_status(
     application.status = status_update.status
     if status_update.notes:
         application.notes = status_update.notes
+    if status_update.status == ApplicationStatus.APPLIED and not application.applied_date:
+        application.applied_date = datetime.now(timezone.utc)
     
     application.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
     
-    return application
+    return _application_to_dict(application)
 
 
 @router.put("/{application_id}", response_model=ApplicationResponse)
@@ -215,7 +248,7 @@ async def update_application(
     db.commit()
     db.refresh(application)
 
-    return application
+    return _application_to_dict(application)
 
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
