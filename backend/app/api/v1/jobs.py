@@ -10,9 +10,8 @@ from app.models.user import User
 from app.models.job import Job, JobType
 from app.models.resume import Resume
 from app.schemas.job import JobCreate, JobResponse, JobSearchParams, JobMatchResult
-from app.services.scraper_service import scrape_jobs
+from app.services.scraper_service import scrape_jobs, save_jobs_to_db
 from app.services.matching_service import calculate_match_score
-from app.tasks.scraping_tasks import scrape_jobs_task
 
 router = APIRouter()
 
@@ -157,17 +156,28 @@ async def match_jobs(
 
 @router.post("/scrape")
 async def trigger_scrape(
-    keywords: str,
-    location: Optional[str] = None,
+    keywords: str = "software",
+    location: Optional[str] = "remote",
     source: Optional[str] = "all",
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Trigger scraping task (skip if broker not available)
+    """Scrape jobs synchronously and save to database"""
     try:
-        scrape_jobs_task.delay(keywords, location, source)
-        return {"message": "Job scraping started", "keywords": keywords, "location": location}
-    except Exception:
-        return {"message": "Job scraping unavailable (broker not running)", "keywords": keywords, "location": location}
+        jobs_data = scrape_jobs(keywords, location, source)
+        saved_count = save_jobs_to_db(jobs_data)
+        return {
+            "message": f"Found {len(jobs_data)} jobs, saved {saved_count} new ones",
+            "keywords": keywords,
+            "location": location,
+            "total_found": len(jobs_data),
+            "saved": saved_count
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Job scraping failed: {str(e)}"
+        )
 
 
 @router.post("/", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
@@ -176,7 +186,7 @@ async def create_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    job = Job(**job_data.dict())
+    job = Job(**job_data.model_dump())
     db.add(job)
     db.commit()
     db.refresh(job)

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database
-    DATABASE_URL: str = "postgresql://postgres:123456@localhost:5432/jobagent"
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/jobagent"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

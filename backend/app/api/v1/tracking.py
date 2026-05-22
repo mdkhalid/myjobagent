@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -21,13 +21,13 @@ async def get_tracking_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Get comprehensive application statistics"""
-    start_date = datetime.utcnow() - timedelta(days=days)
-    
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
     # Overall stats
     total_applications = db.query(Application).filter(
         Application.user_id == current_user.id
     ).count()
-    
+
     # Status breakdown
     status_counts = db.query(
         Application.status,
@@ -35,17 +35,17 @@ async def get_tracking_stats(
     ).filter(
         Application.user_id == current_user.id
     ).group_by(Application.status).all()
-    
+
     # Recent applications
     recent_count = db.query(Application).filter(
         Application.user_id == current_user.id,
         Application.created_at >= start_date
     ).count()
-    
+
     # Interviews scheduled
     upcoming_interviews = db.query(Interview).join(Application).filter(
         Application.user_id == current_user.id,
-        Interview.scheduled_date >= datetime.utcnow(),
+        Interview.scheduled_date >= datetime.now(timezone.utc),
         Interview.status == InterviewStatus.SCHEDULED
     ).count()
     
@@ -74,8 +74,8 @@ async def get_application_timeline(
     current_user: User = Depends(get_current_user)
 ):
     """Get application timeline for visualization"""
-    start_date = datetime.utcnow() - timedelta(days=days)
-    
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
     applications = db.query(Application).filter(
         Application.user_id == current_user.id,
         Application.created_at >= start_date
@@ -112,7 +112,7 @@ async def create_interview(
             detail="Application not found"
         )
     
-    interview = Interview(**interview_data.dict())
+    interview = Interview(**interview_data.model_dump())
     db.add(interview)
     db.commit()
     db.refresh(interview)
@@ -136,7 +136,7 @@ async def get_interviews(
     
     if upcoming_only:
         query = query.filter(
-            Interview.scheduled_date >= datetime.utcnow(),
+            Interview.scheduled_date >= datetime.now(timezone.utc),
             Interview.status == InterviewStatus.SCHEDULED
         )
     
@@ -183,11 +183,11 @@ async def update_interview(
         )
     
     # Update fields
-    update_data = interview_data.dict(exclude_unset=True)
+    update_data = interview_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(interview, field, value)
     
-    interview.updated_at = datetime.utcnow()
+    interview.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(interview)
     
@@ -229,7 +229,7 @@ async def get_dashboard_data(
     # Upcoming interviews
     upcoming_interviews = db.query(Interview).join(Application).filter(
         Application.user_id == current_user.id,
-        Interview.scheduled_date >= datetime.utcnow(),
+        Interview.scheduled_date >= datetime.now(timezone.utc),
         Interview.status == InterviewStatus.SCHEDULED
     ).order_by(Interview.scheduled_date).limit(5).all()
     

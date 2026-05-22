@@ -1,8 +1,9 @@
 import os
 import re
-from typing import Dict, List, Any
+from datetime import datetime
+from typing import Dict, List, Any, Tuple
 from docx import Document
-import PyPDF2
+import pypdf
 
 from app.config import settings
 
@@ -12,9 +13,11 @@ def extract_text_from_pdf(file_path: str) -> str:
     text = ""
     try:
         with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
+            pdf_reader = pypdf.PdfReader(file)
             for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
     except Exception as e:
         print(f"Error extracting PDF: {e}")
     return text
@@ -104,32 +107,38 @@ def extract_skills(text: str) -> List[str]:
 
 def extract_experience(text: str) -> List[Dict[str, Any]]:
     """Extract work experience from resume text"""
+    text = _normalize_text(text)
     experiences = []
-    
-    # Look for common job title patterns
+
     lines = text.split('\n')
     current_exp = {}
-    
+
+    # Date patterns covering common resume formats
+    date_patterns = [
+        r'(?:jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\.?\s+\d{4}\s*[-–—]\s*(?:(?:jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\.?\s+)?(?:\d{4}|present|current)',
+        r'\d{1,2}/\d{4}\s*[-–—]\s*(?:\d{1,2}/)?(?:\d{4}|present|current)',
+        r'\d{4}\s*[-–—]\s*(?:\d{4}|present|current)',
+        r'\d{4}\s+to\s+(?:\d{4}|present|current)',
+    ]
+    date_regex = re.compile('|'.join(date_patterns), re.IGNORECASE)
+
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        
-        # Check for date patterns (experience sections often have dates)
-        date_pattern = r'(\d{4})\s*-\s*(\d{4}|present|current)'
-        if re.search(date_pattern, line, re.IGNORECASE):
+
+        if date_regex.search(line):
             if current_exp:
                 experiences.append(current_exp)
             current_exp = {"dates": line}
-        
-        # Check for company/title patterns
+
         if len(line) < 100 and not current_exp.get("company"):
             if any(keyword in line.lower() for keyword in ["inc", "llc", "corp", "ltd", "company", "technologies"]):
                 current_exp["company"] = line
-    
+
     if current_exp:
         experiences.append(current_exp)
-    
+
     return experiences
 
 
@@ -149,29 +158,105 @@ def extract_education(text: str) -> List[Dict[str, Any]]:
     return education
 
 
+def _normalize_text(text: str) -> str:
+    """Normalize Unicode dashes and whitespace for consistent regex matching"""
+    # Replace common Unicode dashes with ASCII hyphen
+    text = text.replace('\u2013', '-')  # en-dash
+    text = text.replace('\u2014', '-')  # em-dash
+    text = text.replace('\u2015', '-')  # horizontal bar
+    text = text.replace('\u2212', '-')  # minus sign
+    text = text.replace('\u2012', '-')  # figure dash
+    text = text.replace('--', '-')     # double hyphen
+    return text
+
+
 def calculate_experience_years(text: str) -> int:
-    """Calculate total years of experience"""
-    # Look for year ranges
-    year_pattern = r'(\d{4})\s*-\s*(\d{4}|present|current)'
-    matches = re.findall(year_pattern, text, re.IGNORECASE)
-    
-    total_years = 0
-    current_year = 2024
-    
-    for start, end in matches:
-        try:
-            start_year = int(start)
-            if end.lower() in ["present", "current"]:
-                end_year = current_year
-            else:
-                end_year = int(end)
-            
-            years = end_year - start_year
-            if years > 0 and years < 50:  # Sanity check
-                total_years += years
-        except:
-            continue
-    
+    """Calculate total years of experience from date ranges in text
+
+    Collects all year intervals from the text, merges overlapping/adjacent
+    ranges, and sums the contiguous spans to avoid double-counting concurrent
+    or overlapping roles.
+    """
+    text = _normalize_text(text)
+
+    current_year = datetime.now().year
+    intervals: List[Tuple[int, int]] = []
+
+    def try_add_interval(start_year: int, end_year: int) -> None:
+        if end_year <= start_year:
+            return
+        if end_year - start_year >= 50:
+            return
+        intervals.append((start_year, end_year))
+
+    # Pattern 0: "Jan 2018 - Present" or "Jan. 2018 - Dec. 2023"
+    pattern0 = re.compile(
+        r'(?:jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\.?\s+'
+        r'(\d{4})\s*[-–—]\s*'
+        r'(?:(?:jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)\.?\s+)?'
+        r'(\d{4}|present|current)',
+        re.IGNORECASE
+    )
+    for m in pattern0.finditer(text):
+        start_year = int(m.group(1))
+        end_str = (m.group(2) or "").lower()
+        end_year = current_year if end_str in ("present", "current") else int(end_str)
+        try_add_interval(start_year, end_year)
+
+    # Pattern 1: "01/2018 - 12/2023" or "01/2018 - Present"
+    pattern1 = re.compile(
+        r'(\d{1,2})/(\d{4})\s*[-–—]\s*'
+        r'(?:(\d{1,2})/)?'
+        r'(\d{4}|present|current)',
+        re.IGNORECASE
+    )
+    for m in pattern1.finditer(text):
+        start_year = int(m.group(2))
+        end_str = (m.group(4) or "").lower()
+        end_year = current_year if end_str in ("present", "current") else int(end_str)
+        try_add_interval(start_year, end_year)
+
+    # Pattern 2: "2018 - 2023" or "2018 - Present" (bare years)
+    pattern2 = re.compile(
+        r'(\d{4})\s*[-–—]\s*'
+        r'(\d{4}|present|current)',
+        re.IGNORECASE
+    )
+    for m in pattern2.finditer(text):
+        start_year = int(m.group(1))
+        end_str = (m.group(2) or "").lower()
+        end_year = current_year if end_str in ("present", "current") else int(end_str)
+        try_add_interval(start_year, end_year)
+
+    # Pattern 3: "2018 to 2023" or "2018 to Present"
+    pattern3 = re.compile(
+        r'(\d{4})\s+to\s+'
+        r'(\d{4}|present|current)',
+        re.IGNORECASE
+    )
+    for m in pattern3.finditer(text):
+        start_year = int(m.group(1))
+        end_str = (m.group(2) or "").lower()
+        end_year = current_year if end_str in ("present", "current") else int(end_str)
+        try_add_interval(start_year, end_year)
+
+    # Merge overlapping/adjacent intervals and sum their spans
+    if not intervals:
+        return 0
+
+    intervals.sort()
+    merged: List[Tuple[int, int]] = []
+    cur_start, cur_end = intervals[0]
+
+    for start, end in intervals[1:]:
+        if start <= cur_end:  # overlapping or adjacent
+            cur_end = max(cur_end, end)
+        else:
+            merged.append((cur_start, cur_end))
+            cur_start, cur_end = start, end
+    merged.append((cur_start, cur_end))
+
+    total_years = sum(end - start for start, end in merged)
     return min(total_years, 30)  # Cap at 30 years
 
 

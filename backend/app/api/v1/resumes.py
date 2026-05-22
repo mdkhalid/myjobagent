@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -140,11 +140,11 @@ async def update_resume(
         )
     
     # Update fields
-    update_data = resume_data.dict(exclude_unset=True)
+    update_data = resume_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resume, field, value)
     
-    resume.updated_at = datetime.utcnow()
+    resume.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(resume)
     

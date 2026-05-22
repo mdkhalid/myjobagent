@@ -1,5 +1,5 @@
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -99,7 +99,7 @@ class AutoApplyService:
             match_score=match_score,
             auto_applied=auto_submit,
             cover_letter=cover_letter,
-            applied_date=datetime.utcnow() if auto_submit else None
+            applied_date=datetime.now(timezone.utc) if auto_submit else None
         )
         
         self.db.add(application)
@@ -129,7 +129,7 @@ def submit_application(application: Application) -> dict:
         "application_id": str(application.id),
         "job_title": application.job.title if application.job else "Unknown",
         "company": application.job.company if application.job else "Unknown",
-        "submitted_at": datetime.utcnow().isoformat()
+        "submitted_at": datetime.now(timezone.utc).isoformat()
     }
     
     return result

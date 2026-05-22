@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -181,7 +181,7 @@ async def update_application_status(
     if status_update.notes:
         application.notes = status_update.notes
     
-    application.updated_at = datetime.utcnow()
+    application.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
     
@@ -207,14 +207,14 @@ async def update_application(
         )
     
     # Update fields
-    update_data = app_data.dict(exclude_unset=True)
+    update_data = app_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(application, field, value)
     
-    application.updated_at = datetime.utcnow()
+    application.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(application)
-    
+
     return application
 
 
@@ -268,7 +268,7 @@ async def submit_job_application(
     try:
         result = submit_application(application)
         application.status = ApplicationStatus.APPLIED
-        application.applied_date = datetime.utcnow()
+        application.applied_date = datetime.now(timezone.utc)
         db.commit()
         
         return {"message": "Application submitted successfully", "result": result}

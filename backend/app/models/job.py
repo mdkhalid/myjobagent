@@ -1,11 +1,15 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum as PyEnum
 from sqlalchemy import Column, String, DateTime, Text, ARRAY, Numeric, Boolean, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class JobType(str, PyEnum):
@@ -35,7 +39,7 @@ class Job(Base):
     external_url = Column(String)
     posted_date = Column(DateTime)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow)
 
     # Relationships
     applications = relationship("Application", back_populates="job")

@@ -1,8 +1,7 @@
 import random
 import requests
-import xml.etree.ElementTree as ET
 from typing import List, Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.models.job import Job, JobType
 from app.db.session import SessionLocal
@@ -57,7 +56,7 @@ def generate_mock_jobs(keywords: str, location: Optional[str] = None, count: int
         
         # Posted date (within last 30 days)
         days_ago = random.randint(0, 30)
-        posted_date = datetime.utcnow() - timedelta(days=days_ago)
+        posted_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
         
         # Job type
         job_type = random.choice([JobType.FULL_TIME, JobType.CONTRACT, JobType.REMOTE])
@@ -197,7 +196,7 @@ def scrape_github_jobs(keywords: str, location: Optional[str] = None) -> List[Di
                     "source": "remoteok",
                     "external_id": str(item.get("id", "")),
                     "external_url": item.get("url", ""),
-                    "posted_date": datetime.utcnow(),
+                    "posted_date": datetime.now(timezone.utc),
                     "is_active": True
                 }
                 jobs.append(job)
@@ -254,7 +253,7 @@ def scrape_adzuna_jobs(keywords: str, location: Optional[str] = None) -> List[Di
                     "source": "adzuna",
                     "external_id": str(item.get("id", "")),
                     "external_url": item.get("redirect_url", ""),
-                    "posted_date": datetime.utcnow(),
+                    "posted_date": datetime.now(timezone.utc),
                     "is_active": True
                 }
                 jobs.append(job)

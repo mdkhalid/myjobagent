@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -83,7 +83,7 @@ async def start_auto_apply(
         "auto_submit": auto_submit,
         "jobs_queued": 0,
         "jobs_applied_today": 0,
-        "last_run": datetime.utcnow().isoformat()
+        "last_run": datetime.now(timezone.utc).isoformat()
     }
     
     # Trigger auto-apply task (skip if broker not available)
@@ -107,7 +107,7 @@ async def start_auto_apply(
             "auto_submit": auto_submit,
             "jobs_queued": 0,
             "jobs_applied_today": 0,
-            "last_run": datetime.utcnow().isoformat()
+            "last_run": datetime.now(timezone.utc).isoformat()
         }
     except Exception:
         return {
@@ -189,7 +189,7 @@ async def approve_application(
     try:
         result = submit_application(application)
         application.status = ApplicationStatus.APPLIED
-        application.applied_date = datetime.utcnow()
+        application.applied_date = datetime.now(timezone.utc)
         db.commit()
         
         return {"message": "Application approved and submitted", "result": result}

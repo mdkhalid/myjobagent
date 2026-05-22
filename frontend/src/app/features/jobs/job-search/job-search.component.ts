@@ -397,7 +397,8 @@ export class JobSearchComponent implements OnInit {
     this.isLoading = true;
     this.jobService.getJobs({ limit: 20 }).subscribe({
       next: (response) => {
-        this.jobs = response.items?.map((job: Job) => ({ job, match_score: 0 })) || [];
+        const jobsList = Array.isArray(response) ? response : response.items;
+        this.jobs = jobsList?.map((job: Job) => ({ job, match_score: 0 })) || [];
         this.isLoading = false;
       },
       error: () => {
