@@ -16,10 +16,10 @@ from app.services.matching_service import calculate_match_score
 router = APIRouter()
 
 
-@router.get("/", response_model=List[JobResponse])
+@router.get("/")
 async def get_jobs(
-    skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    page: int = Query(1, ge=1),
     keywords: Optional[str] = None,
     location: Optional[str] = None,
     job_type: Optional[JobType] = None,
@@ -41,8 +41,17 @@ async def get_jobs(
     if job_type:
         query = query.filter(Job.job_type == job_type)
     
-    jobs = query.offset(skip).limit(limit).all()
-    return jobs
+    total = query.count()
+    offset = (page - 1) * limit
+    jobs = query.order_by(Job.posted_date.desc().nullslast()).offset(offset).limit(limit).all()
+    
+    return {
+        "items": jobs,
+        "total": total,
+        "page": page,
+        "page_size": limit,
+        "pages": (total + limit - 1) // limit if total > 0 else 0
+    }
 
 
 @router.get("/search")
@@ -77,14 +86,14 @@ async def search_jobs(
         query = query.filter(Job.salary_min <= params.max_salary)
     
     total = query.count()
-    jobs = query.offset((params.page - 1) * params.page_size).limit(params.page_size).all()
+    jobs = query.order_by(Job.posted_date.desc().nullslast()).offset((params.page - 1) * params.page_size).limit(params.page_size).all()
     
     return {
         "items": jobs,
         "total": total,
         "page": params.page,
         "page_size": params.page_size,
-        "pages": (total + params.page_size - 1) // params.page_size
+        "pages": (total + params.page_size - 1) // params.page_size if total > 0 else 0
     }
 
 
@@ -109,7 +118,7 @@ async def get_job(
 async def match_jobs(
     resume_id: Optional[str] = None,
     min_score: float = Query(0.0, ge=0.0, le=100.0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

@@ -34,3 +34,6 @@ uploads/
 
 # CommandCode
 .commandcode/
+
+# LinkedIn encryption
+backend/.linkedin_encryption_key

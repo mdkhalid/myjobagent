@@ -22,7 +22,7 @@ import { AuthService } from './core/services/auth.service';
   ],
   template: `
     <div class="app-container">
-      <mat-toolbar color="primary" *ngIf="authService.isAuthenticated()">
+      <mat-toolbar *ngIf="authService.isAuthenticated()" class="app-toolbar">
         <span class="logo">
           <mat-icon>work</mat-icon>
           Job Agent
@@ -49,6 +49,14 @@ import { AuthService } from './core/services/auth.service';
             <mat-icon>auto_mode</mat-icon>
             Auto-Apply
           </a>
+          <a mat-button routerLink="/search" routerLinkActive="active">
+            <mat-icon>search</mat-icon>
+            Job Search
+          </a>
+          <a mat-button routerLink="/analytics" routerLinkActive="active">
+            <mat-icon>insights</mat-icon>
+            Analytics
+          </a>
         </nav>
         <span class="spacer"></span>
         <button mat-icon-button [matMenuTriggerFor]="userMenu">
@@ -73,12 +81,22 @@ import { AuthService } from './core/services/auth.service';
       display: flex;
       flex-direction: column;
     }
+
+    .app-toolbar {
+      background: rgba(15, 23, 42, 0.85) !important;
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
     
     .logo {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--text);
     }
     
     .spacer {
@@ -87,18 +105,27 @@ import { AuthService } from './core/services/auth.service';
     
     nav {
       display: flex;
-      gap: 8px;
+      gap: 4px;
       
       a {
         display: flex;
         align-items: center;
         gap: 4px;
+        color: var(--text-secondary) !important;
+        transition: color var(--transition);
+        
+        &:hover {
+          color: var(--text) !important;
+        }
+        
+        &.active {
+          color: var(--primary-light) !important;
+        }
       }
     }
     
     .main-content {
       flex: 1;
-      background-color: #f5f5f5;
     }
     
     @media (max-width: 768px) {

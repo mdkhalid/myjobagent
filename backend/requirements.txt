@@ -35,6 +35,13 @@ pypdf==4.2.0
 # Web Scraping
 beautifulsoup4==4.12.3
 
+# Browser Automation (LinkedIn)
+selenium==4.20.0
+undetected-chromedriver==3.5.5
+
+# Encryption
+cryptography==42.0.5
+
 # Utilities
 python-dotenv==1.0.0
 email-validator==2.1.0

@@ -41,10 +41,11 @@ export class JobService {
     return this.http.get<any>(`${this.apiUrl}search`, { params });
   }
 
-  matchJobs(resumeId?: string, minScore: number = 0): Observable<JobMatch[]> {
+  matchJobs(resumeId?: string, minScore: number = 0, limit: number = 100): Observable<JobMatch[]> {
     let httpParams = new HttpParams();
     if (resumeId) httpParams = httpParams.set('resume_id', resumeId);
     httpParams = httpParams.set('min_score', minScore.toString());
+    httpParams = httpParams.set('limit', limit.toString());
     
     return this.http.post<JobMatch[]>(`${this.apiUrl}match`, {}, { params: httpParams });
   }

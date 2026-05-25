@@ -29,7 +29,7 @@ import { AutomationService } from '../../core/services/automation.service';
         <mat-spinner></mat-spinner>
       </div>
 
-      <div *ngIf="!isLoading" class="dashboard-grid">
+      <div *ngIf="!isLoading" class="dashboard-grid fade-in">
         <!-- Stats Cards -->
         <div class="stats-row">
           <mat-card class="stat-card">
@@ -119,9 +119,6 @@ import { AutomationService } from '../../core/services/automation.service';
                 </div>
                 <div class="app-meta">
                   <span class="status-badge" [ngClass]="app.status">{{ app.status }}</span>
-                  <span class="match-score" *ngIf="app.match_score">
-                    {{ app.match_score | number:'1.0-0' }}% match
-                  </span>
                 </div>
               </div>
             </div>
@@ -164,8 +161,8 @@ import { AutomationService } from '../../core/services/automation.service';
   styles: [`
     .page-title {
       margin-bottom: 24px;
-      font-size: 28px;
-      font-weight: 500;
+      font-size: 30px;
+      font-weight: 700;
     }
 
     .dashboard-grid {
@@ -192,16 +189,16 @@ import { AutomationService } from '../../core/services/automation.service';
     .stat-icon {
       width: 56px;
       height: 56px;
-      border-radius: 12px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
 
-      &.blue { background-color: #e3f2fd; color: #1976d2; }
-      &.purple { background-color: #f3e5f5; color: #7b1fa2; }
-      &.green { background-color: #e8f5e9; color: #388e3c; }
-      &.orange { background-color: #fff3e0; color: #f57c00; }
-      &.success { background-color: #e8f5e9; color: #2e7d32; }
+      &.blue { background: rgba(99, 102, 241, 0.12); color: var(--primary-light); }
+      &.purple { background: rgba(168, 85, 247, 0.12); color: #c084fc; }
+      &.green { background: rgba(34, 197, 94, 0.12); color: var(--success); }
+      &.orange { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
+      &.success { background: rgba(34, 197, 94, 0.12); color: var(--success); }
 
       mat-icon {
         font-size: 28px;
@@ -216,13 +213,14 @@ import { AutomationService } from '../../core/services/automation.service';
 
     .stat-value {
       font-size: 32px;
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1;
+      color: var(--text);
     }
 
     .stat-label {
       font-size: 14px;
-      color: #666;
+      color: var(--text-secondary);
       margin-top: 4px;
     }
 
@@ -242,37 +240,45 @@ import { AutomationService } from '../../core/services/automation.service';
         font-size: 64px;
         width: 64px;
         height: 64px;
-        color: #ccc;
+        color: var(--text-muted);
       }
 
       p {
         margin: 16px 0;
-        color: #666;
+        color: var(--text-secondary);
       }
     }
 
     .application-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .application-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px;
-      border-radius: 8px;
-      background-color: #f8f9fa;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      background: rgba(148, 163, 184, 0.04);
+      border: 1px solid var(--border);
+      transition: all var(--transition);
+
+      &:hover {
+        background: rgba(148, 163, 184, 0.08);
+        border-color: var(--border-light);
+      }
 
       .job-title {
         font-weight: 500;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+        color: var(--text);
       }
 
       .company {
-        font-size: 14px;
-        color: #666;
+        font-size: 13px;
+        color: var(--text-secondary);
       }
 
       .app-meta {

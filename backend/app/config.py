@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Job Scraping
     JOOBLE_API_KEY: str = ""
     FINDWORK_API_KEY: str = ""
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
+    USAJOBS_API_KEY: str = ""
+    USAJOBS_EMAIL: str = ""
     
     # File Storage
     UPLOAD_DIR: str = "./uploads"

@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.db.session import engine
 from app.models.base import Base
-from app.api.v1 import auth, users, resumes, jobs, applications, automation, tracking
+from app.api.v1 import auth, users, resumes, jobs, applications, automation, tracking, linkedin
 
 
 @asynccontextmanager
@@ -40,6 +40,7 @@ app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
 app.include_router(applications.router, prefix="/api/v1/applications", tags=["applications"])
 app.include_router(automation.router, prefix="/api/v1/automation", tags=["automation"])
 app.include_router(tracking.router, prefix="/api/v1/tracking", tags=["tracking"])
+app.include_router(linkedin.router, prefix="/api/v1/job-search", tags=["job-search"])
 
 
 @app.get("/")

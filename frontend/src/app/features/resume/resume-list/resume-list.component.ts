@@ -72,7 +72,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/dialo
           <mat-card-content>
             <div class="resume-stats">
               <div class="stat">
-                <span class="stat-value">{{ resume.skills?.length || 0 }}</span>
+                <span class="stat-value">{{ (resume.skills || []).length }}</span>
                 <span class="stat-label">Skills</span>
               </div>
               <div class="stat">
