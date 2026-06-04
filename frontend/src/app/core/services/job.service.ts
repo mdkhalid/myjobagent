@@ -55,4 +55,73 @@ export class JobService {
       params: { keywords, ...(location && { location }) }
     });
   }
+
+  getSkillGap(resumeId?: string, minScore: number = 0, limit: number = 50): Observable<SkillGapResult> {
+    let params = new HttpParams();
+    if (resumeId) params = params.set('resume_id', resumeId);
+    params = params.set('min_score', minScore.toString());
+    params = params.set('limit', limit.toString());
+    return this.http.get<SkillGapResult>(`${this.apiUrl}skill-gap`, { params });
+  }
+
+  getJobSkillGap(jobId: string, resumeId?: string): Observable<JobSkillGapResult> {
+    let params = new HttpParams();
+    if (resumeId) params = params.set('resume_id', resumeId);
+    return this.http.get<JobSkillGapResult>(`${this.apiUrl}${jobId}/skill-gap`, { params });
+  }
+}
+
+export interface LearningResource {
+  name: string;
+  url: string;
+  platform: string;
+}
+
+export interface MissingSkillAnalysis {
+  skill: string;
+  frequency: number;
+  in_percent_of_jobs: number;
+  learning_resources: LearningResource[];
+}
+
+export interface JobBreakdownItem {
+  job_id: string;
+  job_title: string;
+  company: string;
+  match_score: number;
+  matching_skills: string[];
+  missing_skills: string[];
+}
+
+export interface SkillGapResult {
+  my_skills: string[];
+  skill_match_percentage: number;
+  analyzed_jobs: number;
+  total_skills_required: number;
+  skills_i_have: string[];
+  missing_skills: MissingSkillAnalysis[];
+  job_breakdown: JobBreakdownItem[];
+}
+
+export interface JobSkillGapMissingSkill {
+  skill: string;
+  learning_resources: LearningResource[];
+}
+
+export interface ScoreBreakdown {
+  skill_score: number;
+  title_score: number;
+  experience_score: number;
+  location_score: number;
+}
+
+export interface JobSkillGapResult {
+  job_id: string;
+  job_title: string;
+  company: string;
+  match_score: number;
+  my_skills: string[];
+  matching_skills: string[];
+  missing_skills: JobSkillGapMissingSkill[];
+  score_breakdown: ScoreBreakdown;
 }

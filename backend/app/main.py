@@ -5,13 +5,16 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.db.session import engine
 from app.models.base import Base
-from app.api.v1 import auth, users, resumes, jobs, applications, automation, tracking, linkedin
+from app.api.v1 import auth, users, resumes, jobs, applications, automation, tracking, linkedin, company, admin, dashboard
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
+    # Schema migration: add columns that may be missing on existing databases
+    from app.db.migrate import run_migration
+    run_migration(engine)
     yield
     # Shutdown
 
@@ -41,6 +44,9 @@ app.include_router(applications.router, prefix="/api/v1/applications", tags=["ap
 app.include_router(automation.router, prefix="/api/v1/automation", tags=["automation"])
 app.include_router(tracking.router, prefix="/api/v1/tracking", tags=["tracking"])
 app.include_router(linkedin.router, prefix="/api/v1/job-search", tags=["job-search"])
+app.include_router(company.router, prefix="/api/v1/company", tags=["company"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboard"])
 
 
 @app.get("/")

@@ -1,13 +1,17 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { RouterLink } from '@angular/router';
-import { ApplicationService } from '../../core/services/application.service';
-import { AutomationService } from '../../core/services/automation.service';
+import { Router } from '@angular/router';
+import { timer, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { AuthService } from '../../core/services/auth.service';
+import { DashboardService, DashboardData, CompanyDashboard, AdminDashboard, JobseekerDashboard } from '../../core/services/dashboard.service';
+import { JobseekerDashboardComponent } from './jobseeker-dashboard.component';
+import { CompanyDashboardComponent } from './company-dashboard.component';
+import { AdminDashboardComponent } from './admin-dashboard.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,328 +21,193 @@ import { AutomationService } from '../../core/services/automation.service';
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatChipsModule,
     MatProgressSpinnerModule,
-    RouterLink
+    JobseekerDashboardComponent,
+    CompanyDashboardComponent,
+    AdminDashboardComponent,
   ],
   template: `
     <div class="container">
-      <h1 class="page-title">Dashboard</h1>
-      
-      <div *ngIf="isLoading" class="loading-container">
-        <mat-spinner></mat-spinner>
-      </div>
-
-      <div *ngIf="!isLoading" class="dashboard-grid fade-in">
-        <!-- Stats Cards -->
-        <div class="stats-row">
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon blue">
-                <mat-icon>assignment</mat-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats?.total || 0 }}</div>
-                <div class="stat-label">Total Applications</div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon purple">
-                <mat-icon>schedule</mat-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats?.pending || 0 }}</div>
-                <div class="stat-label">Pending</div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon green">
-                <mat-icon>check_circle</mat-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats?.applied || 0 }}</div>
-                <div class="stat-label">Applied</div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon orange">
-                <mat-icon>event</mat-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats?.interview || 0 }}</div>
-                <div class="stat-label">Interviews</div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon success">
-                <mat-icon>stars</mat-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ stats?.offer || 0 }}</div>
-                <div class="stat-label">Offers</div>
-              </div>
-            </mat-card-content>
-          </mat-card>
+      <!-- Loading state — either waiting for role or loading dashboard data -->
+      <div *ngIf="isLoading || isWaitingForRole" class="loading-container">
+        <div class="loading-content">
+          <mat-spinner diameter="48"></mat-spinner>
+          <p class="loading-text">{{ isWaitingForRole ? 'Loading your profile...' : 'Loading dashboard...' }}</p>
+          <span class="loading-hint" *ngIf="isWaitingForRole">Just a moment while we grab your account</span>
         </div>
-
-        <!-- Recent Applications -->
-        <mat-card class="recent-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>history</mat-icon>
-              Recent Applications
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div *ngIf="recentApplications.length === 0" class="empty-state">
-              <mat-icon>inbox</mat-icon>
-              <p>No applications yet. Start by searching for jobs!</p>
-              <button mat-raised-button color="primary" routerLink="/jobs">
-                <mat-icon>search</mat-icon>
-                Search Jobs
-              </button>
-            </div>
-            
-            <div *ngIf="recentApplications.length > 0" class="application-list">
-              <div *ngFor="let app of recentApplications" class="application-item">
-                <div class="app-info">
-                  <div class="job-title">{{ app.job_title }}</div>
-                  <div class="company">{{ app.company }}</div>
-                </div>
-                <div class="app-meta">
-                  <span class="status-badge" [ngClass]="app.status">{{ app.status }}</span>
-                </div>
-              </div>
-            </div>
-          </mat-card-content>
-          <mat-card-actions *ngIf="recentApplications.length > 0">
-            <button mat-button color="primary" routerLink="/applications">
-              View All Applications
-            </button>
-          </mat-card-actions>
-        </mat-card>
-
-        <!-- Quick Actions -->
-        <mat-card class="actions-card">
-          <mat-card-header>
-            <mat-card-title>
-              <mat-icon>flash_on</mat-icon>
-              Quick Actions
-            </mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="action-buttons">
-              <button mat-raised-button color="primary" routerLink="/resumes">
-                <mat-icon>upload</mat-icon>
-                Upload Resume
-              </button>
-              <button mat-raised-button color="accent" routerLink="/jobs">
-                <mat-icon>search</mat-icon>
-                Find Jobs
-              </button>
-              <button mat-raised-button color="warn" routerLink="/automation">
-                <mat-icon>auto_mode</mat-icon>
-                Auto-Apply
-              </button>
-            </div>
-          </mat-card-content>
-        </mat-card>
       </div>
+
+      <div *ngIf="error" class="error-state">
+        <mat-icon>error</mat-icon>
+        <p>{{ error }}</p>
+        <button mat-stroked-button (click)="retry()">Retry</button>
+      </div>
+
+      <!-- Jobseeker Dashboard -->
+      <app-jobseeker-dashboard
+        *ngIf="!isLoading && !error && role === 'jobseeker'"
+        [data]="jobseekerData"
+      />
+
+      <!-- Company Dashboard -->
+      <app-company-dashboard
+        *ngIf="!isLoading && !error && role === 'company'"
+        [data]="companyData"
+        (createJob)="onCreateJob()"
+        (editJob)="onEditJob($event)"
+        (viewJob)="onViewJob($event)"
+        (viewApplicants)="onViewApplicants($event)"
+      />
+
+      <!-- Admin Dashboard -->
+      <app-admin-dashboard
+        *ngIf="!isLoading && !error && role === 'admin'"
+        [data]="adminData"
+        (manageUsers)="onManageUsers()"
+      />
     </div>
   `,
   styles: [`
-    .page-title {
-      margin-bottom: 24px;
-      font-size: 30px;
-      font-weight: 700;
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    .loading-container { display: flex; justify-content: center; align-items: center; min-height: 400px; }
+    .loading-content { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .loading-text { font-size: 16px; color: var(--text-secondary); margin: 0; }
+    .loading-hint { font-size: 13px; color: var(--text-muted); animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+    .error-state {
+      text-align: center; padding: 60px;
+      mat-icon { font-size: 48px; width: 48px; height: 48px; color: var(--warn); }
+      p { margin: 12px 0; color: var(--text-secondary); }
     }
-
-    .dashboard-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-    }
-
-    .stat-card {
-      mat-card-content {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 20px;
-      }
-    }
-
-    .stat-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      &.blue { background: rgba(99, 102, 241, 0.12); color: var(--primary-light); }
-      &.purple { background: rgba(168, 85, 247, 0.12); color: #c084fc; }
-      &.green { background: rgba(34, 197, 94, 0.12); color: var(--success); }
-      &.orange { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
-      &.success { background: rgba(34, 197, 94, 0.12); color: var(--success); }
-
-      mat-icon {
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
-      }
-    }
-
-    .stat-info {
-      flex: 1;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: 700;
-      line-height: 1;
-      color: var(--text);
-    }
-
-    .stat-label {
-      font-size: 14px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-
-    .recent-card {
-      mat-card-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-
-      mat-icon {
-        font-size: 64px;
-        width: 64px;
-        height: 64px;
-        color: var(--text-muted);
-      }
-
-      p {
-        margin: 16px 0;
-        color: var(--text-secondary);
-      }
-    }
-
-    .application-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .application-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 16px;
-      border-radius: var(--radius-md);
-      background: rgba(148, 163, 184, 0.04);
-      border: 1px solid var(--border);
-      transition: all var(--transition);
-
-      &:hover {
-        background: rgba(148, 163, 184, 0.08);
-        border-color: var(--border-light);
-      }
-
-      .job-title {
-        font-weight: 500;
-        margin-bottom: 2px;
-        color: var(--text);
-      }
-
-      .company {
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-
-      .app-meta {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-    }
-
-    .actions-card {
-      mat-card-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-
-      button {
-        flex: 1;
-        min-width: 150px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-      }
-    }
-  `]
+  `],
 })
 export class DashboardComponent implements OnInit {
-  private applicationService = inject(ApplicationService);
+  private dashboardService = inject(DashboardService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  stats: any = null;
-  recentApplications: any[] = [];
   isLoading = true;
+  isWaitingForRole = false;
+  error: string | null = null;
+  dashboardData: DashboardData | null = null;
+  role: string | null = null;
+
+  private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
-    this.loadDashboardData();
+    this.init();
   }
 
-  loadDashboardData(): void {
-    this.applicationService.getStats().subscribe({
-      next: (stats) => {
-        this.stats = stats;
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private init(): void {
+    // Reset state
+    this.error = null;
+    this.dashboardData = null;
+    this.role = null;
+    this.isLoading = true;
+    this.isWaitingForRole = false;
+
+    // Try immediate role check first (fast path when already loaded)
+    this.role = this.authService.getUserRole();
+    if (this.role) {
+      this.loadDashboard();
+      return;
+    }
+
+    // Role not loaded yet — show loading state while we wait
+    this.isWaitingForRole = true;
+
+    // Wait for the auth service to load the current user
+    this.authService.currentUser$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (user) => {
+          if (user) {
+            this.role = user.role;
+            this.isWaitingForRole = false;
+            this.loadDashboard();
+          }
+        },
+      });
+
+    // Timeout safeguard — show error if role never loads (15s)
+    timer(15000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.role && !this.error) {
+          this.isWaitingForRole = false;
+          this.isLoading = false;
+          this.error = 'Unable to determine user role. Please try logging in again.';
+        }
+      });
+  }
+
+  retry(): void {
+    this.destroy$.next(); // cancel old subscriptions
+    this.destroy$ = new Subject<void>(); // create fresh subject
+    this.init();
+  }
+
+  loadDashboard(): void {
+    this.isLoading = true;
+    this.error = null;
+    this.dashboardService.getDashboard()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+      next: (data) => {
+        this.dashboardData = data;
         this.isLoading = false;
       },
-      error: () => {
+      error: (err) => {
         this.isLoading = false;
-      }
+        this.error = err.error?.detail || 'Failed to load dashboard data';
+      },
     });
+  }
 
-    this.applicationService.getApplications().subscribe({
-      next: (applications) => {
-        this.recentApplications = applications.slice(0, 5);
-      }
-    });
+  // ── Typed getters for child components ───────────────────────────
+
+  get jobseekerData(): JobseekerDashboard | null {
+    return this.role === 'jobseeker' ? (this.dashboardData as JobseekerDashboard) : null;
+  }
+
+  get companyData(): CompanyDashboard | null {
+    return this.role === 'company' ? (this.dashboardData as CompanyDashboard) : null;
+  }
+
+  get adminData(): AdminDashboard | null {
+    return this.role === 'admin' ? (this.dashboardData as AdminDashboard) : null;
+  }
+
+  // ── Company actions ──────────────────────────────────────────────
+
+  onCreateJob(): void {
+    // Navigate to a job posting form — for now, go to the jobs page
+    this.router.navigate(['/jobs']);
+  }
+
+  onEditJob(jobId: string): void {
+    // Navigate to job edit — for now, go to the jobs page
+    this.router.navigate(['/jobs']);
+  }
+
+  onViewJob(jobId: string): void {
+    // Navigate to job detail — for now, go to applications
+    this.router.navigate(['/applications']);
+  }
+
+  onViewApplicants(jobId: string): void {
+    // Navigate to a filtered view of applicants
+    this.router.navigate(['/applications']);
+  }
+
+  // ── Admin actions ────────────────────────────────────────────────
+
+  onManageUsers(): void {
+    this.router.navigate(['/admin/users']);
   }
 }

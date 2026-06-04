@@ -10,7 +10,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { JobService, Job, JobMatch } from '../../../core/services/job.service';
+import { JobService, Job, JobMatch, JobSkillGapResult } from '../../../core/services/job.service';
 import { ApplicationService } from '../../../core/services/application.service';
 
 @Component({
@@ -67,11 +67,12 @@ import { ApplicationService } from '../../../core/services/application.service';
       <!-- Action Buttons -->
       <div class="actions-row">
         <button 
-          mat-stroked-button
+          mat-raised-button
           (click)="scrapeJobs()"
-          [disabled]="isScraping">
-          <mat-icon>refresh</mat-icon>
-          {{ isScraping ? 'Scraping...' : 'Scrape Fresh Jobs' }}
+          [disabled]="isScraping"
+          class="scrape-btn">
+          <mat-icon>cloud_download</mat-icon>
+          {{ isScraping ? 'Scraping...' : 'Scrape Jobs' }}
         </button>
         <button 
           mat-raised-button 
@@ -172,6 +173,17 @@ import { ApplicationService } from '../../../core/services/application.service';
                 View Job
               </a>
               <button 
+                mat-stroked-button
+                color="primary"
+                (click)="viewJobSkillGap(jobMatch.job.id)"
+                [disabled]="isAnalyzingJobGap.get(jobMatch.job.id)"
+                class="skill-gap-job-btn">
+                <mat-icon *ngIf="!isAnalyzingJobGap.get(jobMatch.job.id) && !jobSkillGaps.get(jobMatch.job.id)">insights</mat-icon>
+                <mat-spinner *ngIf="isAnalyzingJobGap.get(jobMatch.job.id)" diameter="16"></mat-spinner>
+                <mat-icon *ngIf="!isAnalyzingJobGap.get(jobMatch.job.id) && jobSkillGaps.get(jobMatch.job.id)">expand_less</mat-icon>
+                {{ isAnalyzingJobGap.get(jobMatch.job.id) ? '' : (jobSkillGaps.get(jobMatch.job.id) ? 'Hide Analysis' : 'Skill Gap') }}
+              </button>
+              <button 
                 mat-raised-button 
                 color="accent" 
                 (click)="applyToJob(jobMatch.job)"
@@ -180,6 +192,56 @@ import { ApplicationService } from '../../../core/services/application.service';
                 {{ appliedJobs.has(jobMatch.job.id) ? 'Applied' : 'Apply' }}
               </button>
             </mat-card-actions>
+
+            <!-- Per-Job Skill Gap Analysis Panel -->
+            <div *ngIf="jobSkillGaps.get(jobMatch.job.id)" class="job-skill-gap-panel fade-in">
+              <div class="gap-header">
+                <div class="gap-score" [ngClass]="getScoreClass(jobSkillGaps.get(jobMatch.job.id)!.match_score)">
+                  <span class="gap-score-value">{{ jobSkillGaps.get(jobMatch.job.id)!.match_score | number:'1.0-0' }}%</span>
+                  <span class="gap-score-label">Match</span>
+                </div>
+              </div>
+
+              <div class="gap-section">
+                <div class="gap-section-title">
+                  <mat-icon class="match-icon">check_circle</mat-icon>
+                  Matching Skills
+                  <span class="gap-count">{{ jobSkillGaps.get(jobMatch.job.id)!.matching_skills.length }}</span>
+                </div>
+                <div class="gap-chips" *ngIf="jobSkillGaps.get(jobMatch.job.id)!.matching_skills.length">
+                  <span class="gap-chip match" *ngFor="let s of jobSkillGaps.get(jobMatch.job.id)!.matching_skills">{{ s }}</span>
+                </div>
+                <div class="gap-empty" *ngIf="!jobSkillGaps.get(jobMatch.job.id)!.matching_skills.length">
+                  No direct skill matches — your experience may still apply
+                </div>
+              </div>
+
+              <div class="gap-section">
+                <div class="gap-section-title">
+                  <mat-icon class="miss-icon">pending</mat-icon>
+                  Missing Skills
+                  <span class="gap-count warn">{{ jobSkillGaps.get(jobMatch.job.id)!.missing_skills.length }}</span>
+                </div>
+                <div class="missing-list-compact">
+                  <div class="missing-item-compact" *ngFor="let ms of jobSkillGaps.get(jobMatch.job.id)!.missing_skills">
+                    <div class="missing-skill-header">
+                      <span class="missing-skill-name">{{ ms.skill }}</span>
+                    </div>
+                    <div class="resources-mini" *ngIf="ms.learning_resources?.length">
+                      <span class="resource-mini" *ngFor="let r of ms.learning_resources.slice(0, 2)">
+                        <a [href]="r.url" target="_blank" rel="noopener" class="resource-link">
+                          {{ r.name | slice:0:40 }}{{ r.name.length > 40 ? '...' : '' }}
+                          <span class="res-platform" [ngClass]="platformClass(r.platform)">{{ r.platform }}</span>
+                        </a>
+                      </span>
+                      <span *ngIf="ms.learning_resources.length > 2" class="more-resources">
+                        +{{ ms.learning_resources.length - 2 }} more
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </mat-card>
         </div>
 
@@ -255,6 +317,168 @@ import { ApplicationService } from '../../../core/services/application.service';
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+    }
+
+.scrape-btn {
+      background: linear-gradient(135deg, #059669, #10b981) !important;
+      color: white !important;
+      border: none !important;
+      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3) !important;
+      transition: all var(--transition) !important;
+      &:hover {
+        box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4) !important;
+        transform: translateY(-1px);
+      }
+      &:disabled { opacity: 0.6; }
+    }
+
+    .skill-gap-job-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      mat-spinner { margin: 0 4px; }
+    }
+
+    .job-skill-gap-panel {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      background: rgba(148,163,184,0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+
+      .gap-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .gap-score {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-weight: 700;
+        &.high { background: rgba(34,197,94,0.1); color: var(--success); }
+        &.medium { background: rgba(245,158,11,0.1); color: var(--warning); }
+        &.low { background: rgba(239,68,68,0.1); color: var(--warn); }
+        .gap-score-value { font-size: 18px; }
+        .gap-score-label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; }
+      }
+
+      .gap-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .gap-section-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        mat-icon { font-size: 16px; width: 16px; height: 16px; }
+        .match-icon { color: var(--success); }
+        .miss-icon { color: var(--warning); }
+      }
+      .gap-count {
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(34,197,94,0.1);
+        color: var(--success);
+        padding: 1px 7px;
+        border-radius: 8px;
+        &.warn { background: rgba(245,158,11,0.1); color: var(--warning); }
+      }
+
+      .gap-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .gap-chip {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        &.match {
+          background: rgba(34,197,94,0.08);
+          color: var(--success);
+          border-color: rgba(34,197,94,0.15);
+        }
+        &.miss {
+          background: rgba(245,158,11,0.08);
+          color: var(--warning);
+          border-color: rgba(245,158,11,0.15);
+        }
+      }
+      .gap-empty {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+        padding: 4px 0;
+      }
+
+      .missing-list-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .missing-item-compact {
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        background: rgba(148,163,184,0.04);
+        border: 1px solid var(--border);
+      }
+      .missing-skill-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .missing-skill-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .resources-mini {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .resource-mini {
+        font-size: 11px;
+      }
+      .resource-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: rgba(99,102,241,0.06);
+        color: var(--text);
+        text-decoration: none;
+        transition: all var(--transition);
+        font-size: 11px;
+        &:hover { background: rgba(99,102,241,0.1); color: var(--primary-light); }
+      }
+      .res-platform {
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        &.free { background: rgba(34,197,94,0.1); color: var(--success); }
+        &.paid, &.udemy, &.coursera, &.book { background: rgba(99,102,241,0.1); color: var(--primary-light); }
+      }
+      .more-resources {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-style: italic;
+        align-self: center;
       }
     }
 
@@ -503,6 +727,8 @@ export class JobSearchComponent implements OnInit {
   isSearching = false;
   isMatching = false;
   isScraping = false;
+  isAnalyzingJobGap = new Map<string, boolean>();
+  jobSkillGaps = new Map<string, JobSkillGapResult>();
   hasSearched = false;
 
   paginated = false;
@@ -657,5 +883,32 @@ export class JobSearchComponent implements OnInit {
 
   isMatchingSkill(skill: string, jobMatch: JobMatch): boolean {
     return jobMatch.matching_skills?.includes(skill) || false;
+  }
+
+  viewJobSkillGap(jobId: string): void {
+    // Toggle off if already showing
+    if (this.jobSkillGaps.has(jobId)) {
+      this.jobSkillGaps.delete(jobId);
+      return;
+    }
+
+    this.isAnalyzingJobGap.set(jobId, true);
+
+    this.jobService.getJobSkillGap(jobId).subscribe({
+      next: (result) => {
+        this.jobSkillGaps.set(jobId, result);
+        this.isAnalyzingJobGap.set(jobId, false);
+      },
+      error: (err) => {
+        this.isAnalyzingJobGap.set(jobId, false);
+        const message = err.error?.detail || err.message || 'Failed to analyze skill gap';
+        this.snackBar.open(message, 'Close', { duration: 5000 });
+      }
+    });
+  }
+
+  platformClass(platform: string): string {
+    if (!platform) return 'free';
+    return platform.toLowerCase().replace(/[^a-z]/g, '');
   }
 }

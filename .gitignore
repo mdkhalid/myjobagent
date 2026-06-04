@@ -1,39 +1,102 @@
+# ============================================
 # Python
+# ============================================
 __pycache__/
 *.py[cod]
+*.pyo
+*.so
+*.egg
 *.egg-info/
 dist/
 build/
 .eggs/
-*.egg
 venv/
 env/
 .venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.whl
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+coverage/
+htmlcov/
+*.cover
+.pytest_cache/
 
-# Node
+# ============================================
+# Node / Frontend
+# ============================================
 node_modules/
-dist/
+frontend/node_modules/
 .angular/
+frontend/.angular/
 
-# IDE
+# ============================================
+# Environment & Secrets
+# ============================================
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+*.pem
+*.cert
+*.key
+backend/.linkedin_encryption_key
+
+# ============================================
+# IDE & Editor
+# ============================================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
 
-# OS
+# ============================================
+# OS-Specific
+# ============================================
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+nul
 
-# Uploads
-uploads/
+# ============================================
+# Docker
+# ============================================
+docker-compose.override.yml
 
-# Logs
+# ============================================
+# Logs & Temp
+# ============================================
 *.log
+*.tmp
+*.bak
+.directory
 
-# Environment variables
-.env
+# ============================================
+# Uploads & Data
+# ============================================
+uploads/
+backend/uploads/
 
-# CommandCode
+# ============================================
+# Dot-folders (hidden directories)
+# ============================================
+.deepseek/
+.pytest_cache/
 .commandcode/
 
-# LinkedIn encryption
-backend/.linkedin_encryption_key
+# ============================================
+# Dev credentials (do not commit)
+# ============================================
+.users.md

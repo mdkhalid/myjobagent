@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
-from sqlalchemy import Column, String, DateTime, Text, ARRAY, Numeric, Boolean, Enum
+from sqlalchemy import Column, String, DateTime, Text, ARRAY, Numeric, Boolean, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -41,5 +41,9 @@ class Job(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=_utcnow)
 
+    # Company (poster) who created this job listing
+    poster_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+
     # Relationships
     applications = relationship("Application", back_populates="job")
+    poster = relationship("User", back_populates="posted_jobs", foreign_keys=[poster_id])
