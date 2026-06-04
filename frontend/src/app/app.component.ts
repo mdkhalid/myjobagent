@@ -51,10 +51,12 @@ import { AuthService } from './core/services/auth.service';
             <mat-icon>auto_mode</mat-icon>
             Auto-Apply
           </a>
+          <!-- Multi-source search — hidden in favor of /jobs page
           <a mat-button routerLink="/search" routerLinkActive="active">
             <mat-icon>search</mat-icon>
             Job Search
           </a>
+          -->
           <a mat-button routerLink="/analytics" routerLinkActive="active">
             <mat-icon>insights</mat-icon>
             Analytics
