@@ -95,8 +95,15 @@ backend/uploads/
 .deepseek/
 .pytest_cache/
 .commandcode/
+.npm/
 
 # ============================================
 # Dev credentials (do not commit)
 # ============================================
 .users.md
+
+# ============================================
+# Planning / dev notes (not project docs)
+# ============================================
+FEATURES.md
+SUGGESTIONS.md

@@ -29,6 +29,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'resumes/:id/tailor',
+    loadComponent: () => import('./features/resume/resume-tailor/resume-tailor.component').then(m => m.ResumeTailorComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'resumes/:id/tailor/:version/preview',
+    loadComponent: () => import('./features/resume/resume-preview/resume-preview.component').then(m => m.ResumePreviewComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'jobs',
     loadComponent: () => import('./features/jobs/job-search/job-search.component').then(m => m.JobSearchComponent),
     canActivate: [authGuard]

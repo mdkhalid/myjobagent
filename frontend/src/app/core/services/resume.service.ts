@@ -14,6 +14,46 @@ export interface Resume {
   updated_at: string;
 }
 
+export interface Suggestion {
+  id: string;
+  section: string;
+  original_text: string;
+  suggested_text: string;
+  reason: string;
+  type: string;
+}
+
+export interface AtsCategoryScores {
+  keywords: number;
+  formatting: number;
+  experience: number;
+  education: number;
+  skills: number;
+}
+
+export interface AtsScore {
+  overall: number;
+  categories: AtsCategoryScores;
+  strengths: string[];
+  improvements: string[];
+  missing_keywords: string[];
+}
+
+export interface TailorRequest {
+  job_title: string;
+  job_description: string;
+  job_skills?: string[];
+}
+
+export interface TailorResponse {
+  suggestions: Suggestion[];
+  ats_score: AtsScore;
+}
+
+export interface AtsScoreResponse {
+  ats_score: AtsScore;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -41,5 +81,31 @@ export class ResumeService {
 
   getParsedResume(id: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}${id}/parsed`);
+  }
+
+  tailorResume(id: string, request: TailorRequest): Observable<TailorResponse> {
+    const apiUrl = '/api/v1/tailor/';
+    return this.http.post<TailorResponse>(`${apiUrl}tailor?resume_id=${id}`, request);
+  }
+
+  getAtsScore(id: string, request: TailorRequest): Observable<AtsScoreResponse> {
+    const apiUrl = '/api/v1/tailor/';
+    return this.http.post<AtsScoreResponse>(`${apiUrl}ats-score?resume_id=${id}`, request);
+  }
+
+  saveTailored(id: string, tailoredText: string, jobTitle: string, rawTextSnapshot: string): Observable<any> {
+    const apiUrl = '/api/v1/tailor/';
+    return this.http.post<any>(
+      `${apiUrl}save-tailored?resume_id=${id}`,
+      { tailored_text: tailoredText, job_title: jobTitle, raw_text_snapshot: rawTextSnapshot }
+    );
+  }
+
+  getTailoredVersion(id: string, versionIndex: number): Observable<any> {
+    return this.http.get<any>(`/api/v1/tailor/${id}/tailored/${versionIndex}`);
+  }
+
+  downloadTailored(id: string, versionIndex: number, fmt: string = 'pdf', template: string = 'professional'): string {
+    return `/api/v1/tailor/${id}/tailored/${versionIndex}/download?fmt=${fmt}&template=${template}`;
   }
 }
