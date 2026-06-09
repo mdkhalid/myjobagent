@@ -1,0 +1,135 @@
+Mohammad Khalid   
+Delhi, India | khalid_bib@yahoo.com  | 9811291878 | LinkedIn   
+  
+SUMMARY 
+____________________________________________________________________________  
+Senior Solution Architect with 18 years of experience  in designing and delivering scalable, 
+enterprise -grade solutions. Expert in .NET Core, Angular, React, Node.js , and cloud platforms, with 
+a proven record of leading teams, driving innovation, and building high -quality applications. Skilled in 
+DevOps, API development, Agile, and database management , with strong problem solving  and 
+leadership abilities. Known for delivering secure, efficient, and future -ready solutions that align with 
+business goals and co nsistently exceed expectations.  
+  
+SKILLS 
+_________________________________________________________________________________  
+Programming & Frameworks:  C#, .NET Core, Expert C# Development, Expert .NET Core  
+Development, JavaScript,  TypeScript, Advanced TypeScript, Angular, Advanced Angular 
+Development, React.js, Intermediate React.js Development, Node.js  
+Database & API:  SQL Server, Advanced SQL Server Management, REST API, Advanced REST API 
+Design  
+Cloud & DevOps:  Cloud Computing, Intermediate Cloud Computing Solutions, DevOps, DevOps  
+Practices, CI/CD, CI/CD Pipeline Implementation , Azure Messaging Services (Service Bus / Event 
+Grid / Event Hubs)  
+Methodologies & Practices:  Agile, Agile Methodologies  
+Core Competencies:  Problem -Solving Skills, Team Leadership  
+AI & Generative AI Technologies : OpenAI API Integration , Gemini API Integration  
+  
+EXPERIENCE  
+  
+ 
+LanceSoft Inc. (Remote)                                        Delhi, India              
+Senior Solution Architect | Full Stack Developer                             Jun 2022 – Jul 2025                                           
+● Architected and developed an enterprise logistics management system using .NET Core and 
+Angular 20, improving operational efficiency by 30% and integrating Linehaul, ECD, and Asset 
+Management into a unified platform.   
+● Led a team of 8 developers, managing a $500,000 budget, and ensured cost -effective delivery 
+with scalable, maintainable, and modular system design following microservices and SOA 
+principles.    
+● Optimized Oracle database performance by 25% through PL/SQL enhancements, query tuning, 
+and effective use of SYS_REFCURSOR in .NET Core data access layer.  
+● Implemented real -time ECD features for dispatching, route tracking, and equipment monitoring, 
+leveraging SignalR for live updates and reducing equipment downtime by 15%.   
+
+--- PAGE BREAK ---
+
+● Enhanced user satisfaction by 20% by building a modern, responsive UI using Angular 20, 
+TypeScript, and RxJS, replacing legacy JavaScript/jQuery interfaces for improved user 
+experience and performance.   
+● Architected and implemented a MERN -based solution leveraging React, Node.js , and RESTful 
+services for high -performance user interactions.  
+  
+Infinity Quest. (Remote)              Delhi, India  
+Senior Consultant | Full Stack Developer                                                      Jun 2021 - May 2022   
+● Designed and developed a role -based Learning Management System (LMS) using .NET Core 5 
+and Angular 11, boosting course completion rates by 40%.  
+● Implemented RESTful APIs and modular architecture, improving backend communication 
+efficiency by 35% and ensuring scalability.  
+● Engineered Role -Based Access Control (RBAC) for Administrators, Learners, and Managers, 
+enabling secure, context -aware feature access.  
+● Enabled compliance tracking with 99% accuracy through course assignment and learning path 
+monitoring, while improving navigation efficiency by 20% via dynamic menu generation.  
+● Applied security best practices (authentication, session management, data validation), mitigating 
+risks by 95%, and contributed to Agile ceremonies and code reviews for continuous improvement.  
+  
+AgreeYa Solutions.                                                  Noida, India  
+Sr Software Engineer                                  Nov 2015 - May 2021  
+● Developed document management solutions with SharePoint Online, Power Apps, and Power 
+Automate, cutting processing time by 50%, automating approval flows, and ensuring governance 
+compliance.  
+● Built an Extended Warranty Claim System using .NET Core, Angular 8, REST APIs, and SQL 
+Server 2017, handling 10,000+ claims annually and reducing errors by 15% through advanced 
+validation workflows.  
+● Integrated enterprise platforms by designing role -based SharePoint forms and connecting 
+SharePoint 2013 with Collibra via REST APIs, improving data accessibility by 30% and enhancing 
+cross -platform governance.  
+  
+I have also worked at Plasma Softech and Izon Technosoft as Software Engineer from 2007 to 2015.  
+  
+EDUCATION 
+_________________________________________________________________________________ 
+M. Sc. Computer                 Delhi, India  
+Karnataka State Open University (KSOU)                                                               Jan 2013 - Jan 2014  
+  
+BCA in Computers                                                 DELHI, India  
+
+--- PAGE BREAK ---
+
+IBME                                              Jan 1999 - Jan 2002   
+CERTIFICATIONS  
+_________________________________________________________________________________ 
+●  Exam 339: Managing Microsoft SharePoint Server 2016 Microsoft •          Jan 2019.  
+  
+  
+ADDITIONAL INFORMATION 
+_________________________________________________________________________________  
+  
+●  Mentor/coach for junior developers on modern application design and Agile practices.  
+OTHER PROJECTS 
+_________________________________________________________________________________ 
+Inventory & Order Management System (SIOMS)          Delhi, India  
+Senior Solution Architect | Full Stack Developer                               Jul 2025 – Jan 2026  
+● Developed a Smart Inventory & Order Management System  using .NET 9 , Angular 20 , 
+TypeScript  and SQL Server 2022 , enabling seamless product, supplier, and order tracking with role -
+based access.  
+● Implemented Clean Architecture  Microservices  with CQRS , Repository , and Unit of Work  
+patterns, ensuring scalable, modular, and maintainable codebase.  
+● Built secure RESTful APIs  with JWT authentication , Fluent Validation , and AutoMapper , 
+improving data integrity and reducing manual errors.  
+● Designed a responsive Angular Material  dashboard with real -time alerts, analytics, and interactive 
+charts using ngx-charts  and Reactive Forms . 
+● Integrated Serilog  for centralized logging and background services for automated low -stock alerts, 
+optimizing inventory accuracy and operational efficiency.  
+ 
+AI-Powered E -Commerce Platform           Delhi, India  
+Senior Solution Architect | Full Stack Developer                               Jul 2025 – Jan 2026  
+● Developed a full -stack e -commerce platform  using MongoDB, Express.js, React 18, and 
+Node.js , deployed on AWS infrastructure with EC2  for application hosting and S3 for static asset 
+storage, providing product search, cart, order management, and secure JWT-based authentication . 
+● Built hybrid RESTful and GraphQL APIs  to support flexible data queries and efficient client -side 
+rendering for dynamic product listings and user dashboards, containerized using Docker  and 
+deployed via ECS (Elastic Container Service)  for scalable microservices orchestration.  
+● Integ rated Redis caching  for frequently accessed catalogue and recommendation data, reducing 
+average API latency by 40% and improving overall system performance, with background processing 
+and event -driven workflows handled through Lambda functions . 
+● Implemented AI-powered recommendation engine using OpenAI API / TensorFlow.js , deployed 
+as serverless inference endpoints using AWS Lambda , offering personalized product suggestions 
+based on user behaviour and purchase history.  
+● Designed an intuitive React UI with  Context API and React Router , hosted frontend build artifacts 
+in S3 with secure access policies, integrated Stripe  for secure payments, and enabled role -based 
+admin panel for product and order management.  
+● Configured AWS IAM  roles and security groups, implemented CI/CD pipeline  for automated 
+deployments to EC2/ECS , and monitored application health using CloudWatch to ensure high 
+availability and production -grade reliability.  
+
+--- PAGE BREAK ---
+

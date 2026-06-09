@@ -36,6 +36,26 @@ class TemplateStyle:
 
 TEMPLATES: List[TemplateStyle] = [
     TemplateStyle(
+        name="naukri",
+        label="Naukri Pro",
+        description="Clean ATS-friendly layout matching Naukri resume editor - navy headers, structured sections, optimal spacing",
+        colors=TemplateColors(
+            primary=(0, 51, 102),
+            accent=(0, 102, 204),
+            text=(33, 33, 33),
+            secondary_text=(102, 102, 102),
+            background=(255, 255, 255),
+            border=(0, 102, 204),
+        ),
+        header_align="center",
+        header_underline=True,
+        section_style="underline",
+        font_heading="Calibri",
+        font_body="Calibri",
+        show_icons=False,
+        divider="━",
+    ),
+    TemplateStyle(
         name="professional",
         label="Professional",
         description="Classic dark navy & Arial, similar to traditional resume formats",

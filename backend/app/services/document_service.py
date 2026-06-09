@@ -102,9 +102,23 @@ def _parse_tailored_into_sections(tailored_text: str) -> dict:
     current_section = None
     current_lines = []
 
+    # Lines to skip (visual separators, page breaks, etc.)
+    skip_patterns = [
+        lambda s: s.startswith("_") and len(s) > 10,  # underline separators
+        lambda s: s.startswith("=") and len(s) > 10,  # equals separators
+        lambda s: s.startswith("-") and len(s) > 10,  # dash separators
+        lambda s: "PAGE BREAK" in s.upper(),  # page break markers
+    ]
+
+    def should_skip(line: str) -> bool:
+        return any(pattern(line) for pattern in skip_patterns)
+
     for line in tailored_text.split("\n"):
         stripped = line.strip()
         if not stripped:
+            continue
+
+        if should_skip(stripped):
             continue
 
         # Detect section header
@@ -389,6 +403,7 @@ def generate_docx(
     candidate_name: str = "Candidate",
     job_title: str = "",
     template_name: str = "professional",
+    contact_info: str = "",
 ) -> bytes:
     """Generate a formatted .docx resume using the selected template."""
     style = get_template(template_name)
@@ -419,8 +434,17 @@ def generate_docx(
         run.font.color.rgb = _rgb(style.colors.primary)
         run.font.name = style.font_heading
 
-    # ── Tailored for line ──
-    if job_title:
+    # ── Contact info line (matching original PDF: location | email | phone | linkedin) ──
+    if contact_info:
+        p = doc.add_paragraph()
+        p.alignment = align
+        r = p.add_run(contact_info)
+        r.font.size = Pt(10)
+        r.font.color.rgb = _rgb(style.colors.text)
+        r.font.name = style.font_body
+        p.paragraph_format.space_after = Pt(6)
+    elif job_title:
+        # Fallback: show job title as subtitle if no contact info
         p = doc.add_paragraph()
         p.alignment = align
         r = p.add_run(f"Tailored for: {job_title}")
@@ -429,72 +453,117 @@ def generate_docx(
         r.italic = False
         r.font.name = style.font_body
         p.paragraph_format.space_after = Pt(6)
+    else:
+        # Add small space
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(4)
 
-    # ── Parse sections ──
-    current_section = None
-    lines = tailored_text.split("\n")
+    # ── Parse sections using shared logic ──
+    sections = _parse_tailored_into_sections(tailored_text)
+
+    # Define section order (matches PDF)
+    section_order = [
+        "summary", "professional summary", "profile", "objective",
+        "skills", "technical skills", "core competencies", "expertise",
+        "experience", "work experience", "employment", "work history",
+        "education", "academic background",
+        "certifications", "certificates", "licenses",
+        "additional information",
+        "other projects", "personal projects", "projects",
+        "publications", "research",
+        "languages", "interests", "activities",
+        "references", "volunteer", "volunteering",
+        "awards", "honors", "achievements",
+        "leadership", "affiliations", "memberships",
+    ]
+
     section_renderer = SECTION_RENDERERS_DOCX.get(style.section_style, _docx_section_underline)
+    rendered_sections = set()
 
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
+    for section_name in section_order:
+        for key in sections:
+            if section_name in key.lower() and key not in rendered_sections:
+                section_renderer(doc, key, style)
+                for line in sections[key]:
+                    line = line.strip()
+                    if not line:
+                        p = doc.add_paragraph()
+                        p.paragraph_format.space_after = Pt(2)
+                        continue
+                    if line.startswith("●") or line.startswith("-") or line.startswith("*"):
+                        p = doc.add_paragraph(line[1:].strip())
+                        p.paragraph_format.space_after = Pt(1)
+                        p.paragraph_format.left_indent = Inches(0.25)
+                    else:
+                        p = doc.add_paragraph(line)
+                        p.paragraph_format.space_after = Pt(1)
+                p = doc.add_paragraph()
+                p.paragraph_format.space_after = Pt(6)
+                rendered_sections.add(key)
+                break
 
-        stripped = line.strip("= -")
-        if line.startswith("=") or line.startswith("---"):
-            current_section = stripped.strip("-")
-            section_renderer(doc, current_section, style)
-        elif line.isupper() and len(line) > 2:
-            current_section = line.title()
-            section_renderer(doc, current_section, style)
-        else:
-            p = doc.add_paragraph(line)
-            p.paragraph_format.space_after = Pt(1)
-            p.paragraph_format.space_before = Pt(0)
-            p.paragraph_format.line_spacing = 1.08
+    # Render any remaining sections
+    for key, content in sections.items():
+        if key not in rendered_sections:
+            section_renderer(doc, key, style)
+            for line in content:
+                line = line.strip()
+                if not line:
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_after = Pt(2)
+                    continue
+                if line.startswith("●") or line.startswith("-") or line.startswith("*"):
+                    p = doc.add_paragraph(line[1:].strip())
+                    p.paragraph_format.space_after = Pt(1)
+                    p.paragraph_format.left_indent = Inches(0.25)
+                else:
+                    p = doc.add_paragraph(line)
+                    p.paragraph_format.space_after = Pt(1)
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(6)
 
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
     return buf.getvalue()
 
+
 # ── PDF Text Sanitization ──────────────────────────────────────────────
 
 
 def _sanitize_pdf_text(text: str) -> str:
-    """Replace characters not supported by Helvetica with ASCII equivalents."""
+    """Replace characters not supported by Helvetica (Latin-1) with ASCII equivalents."""
     replacements = {
-        "\u2022": "-",      # bullet → dash
-        "\u2023": ">",      # triangular bullet → >
-        "\u25E6": "o",      # white bullet → o
-        "\u25CF": "-",      # black circle → -
-        "\u25CB": "o",      # white circle → o
-        "\u25A0": "-",      # black square → -
-        "\u25AA": "-",      # black small square → -
-        "\u2605": "*",      # star → *
-        "\u2606": "*",      # white star → *
-        "\u2713": "[x]",    # check mark → [x]
-        "\u2717": "[ ]",    # ballot x → [ ]
-        "\u2013": "-",      # en dash → -
-        "\u2014": "--",     # em dash → --
-        "\u2018": "'",      # left single quote → '
-        "\u2019": "'",      # right single quote → '
-        "\u201C": '"',      # left double quote → "
-        "\u201D": '"',      # right double quote → "
-        "\u2026": "...",    # ellipsis → ...
-        "\u00B7": "*",      # middle dot → *
-        "\u25B6": ">",      # play button → >
-        "\u25C0": "<",      # reverse button → <
-        "\u203A": ">",      # single right angle quote → >
-        "\u2039": "<",      # single left angle quote → <
-        "\u00AB": "<<",     # double left angle -> <<
-        "\u00BB": ">>",     # double right angle -> >>
-        "\u00A0": " ",       # nbsp → space
-        "\u200B": "",        # zero-width space → empty
-        "\u2009": " ",       # thin space → space
-        "\u00A9": "(c)",    # copyright
-        "\u00AE": "(r)",    # registered
-        "\u2122": "(tm)",   # trademark
+        "\u2022": "\u00B7",  # bullet → middle dot (Latin-1)
+        "\u2023": ">",       # triangular bullet → >
+        "\u25E6": "\u00B7",  # white bullet → middle dot
+        "\u25CF": "\u00B7",  # black circle → middle dot
+        "\u25CB": "o",       # white circle → o
+        "\u25A0": "\u00B7",  # black square → middle dot
+        "\u25AA": "\u00B7",  # black small square → middle dot
+        "\u2605": "*",       # star → *
+        "\u2606": "*",       # white star → *
+        "\u2713": "[x]",     # check mark → [x]
+        "\u2717": "[ ]",     # ballot x → [ ]
+        "\u2013": "-",       # en dash → -
+        "\u2014": "--",      # em dash → --
+        "\u2018": "'",       # left single quote → '
+        "\u2019": "'",       # right single quote → '
+        "\u201C": '"',       # left double quote → "
+        "\u201D": '"',       # right double quote → "
+        "\u2026": "...",     # ellipsis → ...
+        "\u25B6": ">",       # play button → >
+        "\u25C0": "<",       # reverse button → <
+        "\u203A": ">",       # single right angle quote → >
+        "\u2039": "<",       # single left angle quote → <
+        "\u00AB": "<<",      # double left angle -> <<
+        "\u00BB": ">>",      # double right angle -> >>
+        "\u00A0": " ",        # nbsp → space
+        "\u200B": "",         # zero-width space → empty
+        "\u2009": " ",        # thin space → space
+        "\u00A9": "(c)",     # copyright
+        "\u00AE": "(r)",     # registered
+        "\u2122": "(tm)",    # trademark
     }
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)
@@ -502,17 +571,23 @@ def _sanitize_pdf_text(text: str) -> str:
 
 
 def _pdf_section_underline(pdf, section: str, style: TemplateStyle):
-    # Section headers same size as body text (10pt), bold, matching original PDF style
-    pdf.set_font("Helvetica", "B", 10)
+    is_naukri = style.name == "naukri"
+    # Section headers - naukri uses ALL CAPS, slightly larger, accent color underline
+    font_size = 11 if is_naukri else 10
+    pdf.set_font("Helvetica", "B", font_size)
     pdf.set_text_color(*style.colors.primary)
-    pdf.cell(0, 6, section, new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(1)
-    # Full-width underline in PRIMARY color (matching original PDF where underlines use same navy blue as headers)
-    pdf.set_draw_color(*style.colors.primary)
-    pdf.set_line_width(0.4)
+    # Apply header alignment to section headers for consistency
+    align = "C" if style.header_align == "center" else "L"
+    section_text = section.upper() if is_naukri else section
+    pdf.cell(0, 6, section_text, new_x="LMARGIN", new_y="NEXT", align=align)
+    pdf.ln(0.5 if is_naukri else 1)
+    # Full-width underline in ACCENT color (naukri uses blue accent line)
+    underline_color = style.colors.accent if is_naukri else style.colors.primary
+    pdf.set_draw_color(*underline_color)
+    pdf.set_line_width(0.5 if is_naukri else 0.4)
     y = pdf.get_y()
     pdf.line(pdf.l_margin, y, pdf.w - pdf.r_margin, y)
-    pdf.ln(3.5)
+    pdf.ln(2.5 if is_naukri else 3.5)
     pdf.set_text_color(*style.colors.text)
     pdf.set_line_width(0.2)  # reset to default
 
@@ -525,7 +600,9 @@ def _pdf_section_bar(pdf, section: str, style: TemplateStyle):
     pdf.set_font("Helvetica", "B", 10)
     pdf.set_text_color(*style.colors.primary)
     pdf.cell(6)  # indent after bar
-    pdf.cell(0, 6, section, new_x="LMARGIN", new_y="NEXT")
+    # Apply header alignment to section headers for consistency
+    align = "C" if style.header_align == "center" else "L"
+    pdf.cell(0, 6, section, new_x="LMARGIN", new_y="NEXT", align=align)
     pdf.ln(3)
     pdf.set_text_color(*style.colors.text)
 
@@ -533,7 +610,9 @@ def _pdf_section_bar(pdf, section: str, style: TemplateStyle):
 def _pdf_section_minimal(pdf, section: str, style: TemplateStyle):
     pdf.set_font("Helvetica", "B", 10)
     pdf.set_text_color(*style.colors.primary)
-    pdf.cell(0, 6, section, new_x="LMARGIN", new_y="NEXT")
+    # Apply header alignment to section headers for consistency
+    align = "C" if style.header_align == "center" else "L"
+    pdf.cell(0, 6, section, new_x="LMARGIN", new_y="NEXT", align=align)
     pdf.ln(3)
     pdf.set_text_color(*style.colors.text)
 
@@ -544,7 +623,18 @@ def _pdf_section_badge(pdf, section: str, style: TemplateStyle):
     pdf.set_fill_color(*style.colors.accent)
     pdf.set_text_color(255, 255, 255)
     text_w = pdf.get_string_width(section) + 8
-    pdf.cell(text_w, 7, f"  {section}  ", fill=True, new_x="LMARGIN", new_y="NEXT")
+
+    if style.header_align == "center":
+        # Calculate position to center the badge
+        total_w = text_w + 6  # 3 units padding on each side
+        x = (pdf.w - total_w) / 2
+        pdf.set_x(x)
+        pdf.cell(text_w, 7, f"  {section}  ", fill=True, new_x="LMARGIN", new_y="NEXT")
+    else:
+        # Left alignment - start from left margin with padding
+        pdf.cell(3)  # left padding
+        pdf.cell(text_w, 7, f"  {section}  ", fill=True, new_x="LMARGIN", new_y="NEXT")
+
     pdf.ln(4)
     pdf.set_text_color(*style.colors.text)
 
@@ -561,8 +651,14 @@ class ResumePDF(FPDF):
     def __init__(self, style: TemplateStyle):
         super().__init__()
         self.style = style
-        self.set_margins(15, 15, 15)
-        self.set_auto_page_break(auto=True, margin=25)
+        # Naukri template uses tighter margins for more content space
+        if style.name == "naukri":
+            self.set_margins(15, 15, 15)
+            self.set_auto_page_break(auto=True, margin=20)
+        else:
+            # Use slightly larger margins for better visual appeal
+            self.set_margins(18, 18, 18)  # Increased from 15 to 18
+            self.set_auto_page_break(auto=True, margin=30)  # Increased from 25 to 30
 
     def header(self):
         pass
@@ -576,7 +672,7 @@ def generate_pdf(
     tailored_text: str,
     candidate_name: str = "Candidate",
     job_title: str = "",
-    template_name: str = "professional",
+    template_name: str = "naukri",
     contact_info: str = "",
 ) -> bytes:
     """Generate a formatted PDF resume using the selected template.
@@ -588,26 +684,29 @@ def generate_pdf(
     pdf = ResumePDF(style)
     pdf.add_page()
 
-    # ── Name (18pt matching original PDF) ──
-    pdf.set_font("Helvetica", "B", 18)
+    is_naukri = style.name == "naukri"
+
+    # ── Name ──
+    name_size = 20 if is_naukri else 18
+    pdf.set_font("Helvetica", "B", name_size)
     pdf.set_text_color(*style.colors.primary)
     name_safe = _sanitize_pdf_text(candidate_name)
     if style.header_align == "center":
-        pdf.cell(0, 11, name_safe, new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.cell(0, 11 if is_naukri else 11, name_safe, new_x="LMARGIN", new_y="NEXT", align="C")
     else:
         pdf.cell(0, 11, name_safe, new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(3)
+    pdf.ln(2 if is_naukri else 3)
 
     # ── Contact info line (matching original PDF: location | email | phone | linkedin) ──
     if contact_info:
-        pdf.set_font("Helvetica", "", 10)
-        pdf.set_text_color(*style.colors.text)
+        pdf.set_font("Helvetica", "", 9 if is_naukri else 10)
+        pdf.set_text_color(*style.colors.secondary_text)
         info_safe = _sanitize_pdf_text(contact_info)
         if style.header_align == "center":
             pdf.cell(0, 5, info_safe, new_x="LMARGIN", new_y="NEXT", align="C")
         else:
             pdf.cell(0, 5, info_safe, new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(5)
+        pdf.ln(4 if is_naukri else 5)
     elif job_title:
         # Fallback: show job title as subtitle if no contact info
         pdf.set_font("Helvetica", "", 9)
@@ -623,57 +722,187 @@ def generate_pdf(
 
     # ── Body ──
     pdf.set_text_color(*style.colors.text)
+
+    # Parse the tailored text into sections first
+    sections = _parse_tailored_into_sections(tailored_text)
+
+    # If parsing failed, fall back to line-by-line processing with better logic
+    if not sections:
+        _generate_pdf_line_by_line(pdf, tailored_text, candidate_name, contact_info, style)
+    else:
+        _generate_pdf_from_sections(pdf, sections, style)
+
+    return bytes(pdf.output())
+
+
+def _generate_pdf_line_by_line(pdf, tailored_text: str, candidate_name: str, contact_info: str, style: TemplateStyle):
+    """Fallback method: generate PDF line by line with improved logic."""
     section_renderer = SECTION_RENDERERS_PDF.get(style.section_style, _pdf_section_underline)
 
     _email_re = re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}')
     _phone_re = re.compile(r'(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}')
 
-    raw_lines = tailored_text.split("\n")
-    # Skip lines at the start that duplicate already-rendered name/contact info
-    lines = []
-    found_header = False
-    for i, line in enumerate(raw_lines):
-        s = line.strip()
-        if not s:
-            if not found_header:
-                continue  # skip leading blank lines
-            lines.append(line)
-            continue
-        if not found_header and i < 5:
-            # Skip exact name match
-            if s == candidate_name:
-                continue
-            # Skip exact contact match
-            if contact_info and s == contact_info:
-                continue
-            # Skip combined name+contact line (e.g. "Name | email | phone")
-            if candidate_name and re.search(r'\b' + re.escape(candidate_name) + r'\b', s):
-                has_email = bool(_email_re.search(s))
-                has_phone = bool(_phone_re.search(s))
-                if has_email or has_phone:
-                    continue
-        # Check if this looks like a section header (all-caps, or marker-starting)
-        if s.isupper() and len(s) > 2:
-            found_header = True
-        elif s.startswith("=") or s.startswith("---"):
-            found_header = True
-        lines.append(line)
+    lines = tailored_text.split("\n")
+    i = 0
+    in_section = False
 
-    for line in lines:
-        line = line.strip()
-        if not line:
-            pdf.ln(1.5)
+    while i < len(lines):
+        line = lines[i].strip()
+
+        # Skip empty lines at the beginning
+        if not line and i < 3:
+            i += 1
             continue
 
-        stripped = line.strip("= -")
-        if line.startswith("=") or line.startswith("---"):
-            section_renderer(pdf, _sanitize_pdf_text(stripped), style)
-        elif line.isupper() and len(line) > 2:
-            section_renderer(pdf, _sanitize_pdf_text(line), style)
-        else:
-            pdf.set_font("Helvetica", "", 10)
+        # Skip duplicate name/contact info
+        if (line == candidate_name or
+            (contact_info and line == contact_info) or
+            (candidate_name and re.search(r'\b' + re.escape(candidate_name) + r'\b', line) and
+             (_email_re.search(line) or _phone_re.search(line)))):
+            i += 1
+            continue
+
+        # Check for section headers
+        if (line.startswith("=") or line.startswith("---") or
+            (line.isupper() and len(line) > 2 and len(line) < 50)):
+
+            # Extract section header
+            if line.startswith("=") or line.startswith("---"):
+                section_name = line.strip("= -").strip()
+            else:
+                section_name = line
+
+            # Render section header with proper spacing
+            if in_section:
+                pdf.ln(2)  # Add space before new section
+            section_renderer(pdf, _sanitize_pdf_text(section_name), style)
+            in_section = True
+            i += 1
+        elif line:
+            # Regular content line
+            is_naukri = style.name == "naukri"
+            body_font_size = 9 if is_naukri else 10
+            line_height = 5.0 if is_naukri else 5.5
+            bullet_spacing = 0.3 if is_naukri else 0.5
+            empty_line_spacing = 1 if is_naukri else 1.5
+
+            pdf.set_font("Helvetica", "", body_font_size)
             pdf.set_text_color(*style.colors.text)
-            pdf.multi_cell(0, 5, _sanitize_pdf_text(line))
-            pdf.ln(1)
 
-    return bytes(pdf.output())
+            # Handle bullet points with better formatting
+            if line.startswith("●") or line.startswith("-") or line.startswith("*"):
+                pdf.set_font("Helvetica", "", body_font_size)
+                # Add proper bullet character (middle dot, Latin-1 compatible) and spacing
+                bullet_text = "\u00B7 " + line[1:].strip()
+                pdf.multi_cell(0, line_height, _sanitize_pdf_text(bullet_text))
+                pdf.ln(bullet_spacing)
+            else:
+                # Regular text with proper spacing
+                pdf.multi_cell(0, line_height, _sanitize_pdf_text(line))
+                pdf.ln(bullet_spacing)
+            in_section = True
+            i += 1
+        else:
+            # Empty line with consistent spacing
+            empty_line_spacing = 1 if style.name == "naukri" else 1.5
+            pdf.ln(empty_line_spacing)
+            i += 1
+
+
+def _generate_pdf_from_sections(pdf, sections: dict, style: TemplateStyle):
+    """Generate PDF from parsed sections with proper formatting."""
+    section_renderer = SECTION_RENDERERS_PDF.get(style.section_style, _pdf_section_underline)
+
+    # Define section order (common resume sections) - matches original resume structure
+    # More specific section names first to avoid partial matches (e.g., "other projects" before "projects")
+    section_order = [
+        "summary", "professional summary", "profile", "objective",
+        "skills", "technical skills", "core competencies", "expertise",
+        "experience", "work experience", "employment", "work history",
+        "education", "academic background",
+        "certifications", "certificates", "licenses",
+        "additional information",
+        "other projects", "personal projects", "projects",
+        "publications", "research",
+        "languages", "interests", "activities",
+        "references", "volunteer", "volunteering",
+        "awards", "honors", "achievements",
+        "leadership", "affiliations", "memberships",
+    ]
+
+    # Render sections in order
+    rendered_sections = set()
+
+    for section_name in section_order:
+        for key in sections:
+            if section_name in key.lower() and key not in rendered_sections:
+                # Render section header
+                section_renderer(pdf, _sanitize_pdf_text(key), style)
+
+                # Render section content
+                for line in sections[key]:
+                    line = line.strip()
+                    if not line:
+                        pdf.ln(1.5)  # Consistent spacing for empty lines
+                        continue
+
+                    is_naukri = style.name == "naukri"
+                body_font_size = 9 if is_naukri else 10
+                line_height = 5.0 if is_naukri else 5.5
+                bullet_spacing = 0.3 if is_naukri else 0.5
+                section_spacing = 2 if is_naukri else 3
+                empty_line_spacing = 1 if is_naukri else 1.5
+
+                # Render section content
+                for line in sections[key]:
+                    line = line.strip()
+                    if not line:
+                        pdf.ln(empty_line_spacing)
+                        continue
+
+                    # Handle bullet points with better spacing
+                    if line.startswith("●") or line.startswith("-") or line.startswith("*"):
+                        pdf.set_font("Helvetica", "", body_font_size)
+                        bullet_text = "\u00B7 " + line[1:].strip()
+                        pdf.multi_cell(0, line_height, _sanitize_pdf_text(bullet_text))
+                        pdf.ln(bullet_spacing)
+                    else:
+                        pdf.set_font("Helvetica", "", body_font_size)
+                        # Handle long lines with automatic word wrap
+                        pdf.multi_cell(0, line_height, _sanitize_pdf_text(line))
+                        pdf.ln(bullet_spacing)
+
+                # Add proper spacing after section
+                pdf.ln(section_spacing)
+                rendered_sections.add(key)
+                break
+
+    # Render any remaining sections that weren't in the predefined order
+    for key, content in sections.items():
+        if key not in rendered_sections:
+            section_renderer(pdf, _sanitize_pdf_text(key), style)
+
+            is_naukri = style.name == "naukri"
+            body_font_size = 9 if is_naukri else 10
+            line_height = 5.0 if is_naukri else 5.5
+            bullet_spacing = 0.3 if is_naukri else 0.5
+            section_spacing = 2 if is_naukri else 3
+            empty_line_spacing = 1 if is_naukri else 1.5
+
+            for line in content:
+                line = line.strip()
+                if not line:
+                    pdf.ln(empty_line_spacing)
+                    continue
+
+                if line.startswith("●") or line.startswith("-") or line.startswith("*"):
+                    pdf.set_font("Helvetica", "", body_font_size)
+                    bullet_text = "\u00B7 " + line[1:].strip()
+                    pdf.multi_cell(0, line_height, _sanitize_pdf_text(bullet_text))
+                    pdf.ln(bullet_spacing)
+                else:
+                    pdf.set_font("Helvetica", "", body_font_size)
+                    pdf.multi_cell(0, line_height, _sanitize_pdf_text(line))
+                    pdf.ln(bullet_spacing)
+
+            pdf.ln(section_spacing)

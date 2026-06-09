@@ -348,7 +348,7 @@ async def download_tailored(
         )
 
     elif fmt == "docx":
-        docx_bytes = generate_docx(tailored_text, candidate_name, job_title, template)
+        docx_bytes = generate_docx(tailored_text, candidate_name, job_title, template, contact_info=contact_info)
         return Response(
             content=docx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -362,21 +362,19 @@ async def download_tailored(
         contact_parts = []
 
         # Location: try parsed_content, user profile, then search raw_text
+        email = pc.get("email") or current_user.email or ""
         loc = pc.get("location") or pc.get("city") or current_user.location or ""
         if not loc and raw_text:
             # General approach: find the contact line (contains email with | separators) and extract location as first field
-            email_val = email or current_user.email or ""
-            if email_val:
+            if email:
                 for line in raw_text.split('\n'):
-                    if email_val in line and '|' in line:
+                    if email in line and '|' in line:
                         parts = line.split('|')
                         candidate = parts[0].strip() if parts else ""
                         # Ensure it's not an email/URL/name
                         if candidate and not re.search(r'[@.\\/]', candidate) and candidate != candidate_name:
                             loc = candidate
                             break
-
-        email = pc.get("email") or current_user.email or ""
         phone = pc.get("phone") or current_user.phone or ""
         linkedin = pc.get("linkedin") or ""
         # If no LinkedIn URL in parsed_content, check raw_text for "LinkedIn" word
