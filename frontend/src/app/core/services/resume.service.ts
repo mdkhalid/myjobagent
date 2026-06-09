@@ -54,6 +54,18 @@ export interface AtsScoreResponse {
   ats_score: AtsScore;
 }
 
+export interface VariantInfo {
+  id: string;
+  label: string;
+  description: string;
+  tailored_text: string;
+  ats_score: AtsScore;
+}
+
+export interface TailorVariantsResponse {
+  variants: VariantInfo[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -93,11 +105,13 @@ export class ResumeService {
     return this.http.post<AtsScoreResponse>(`${apiUrl}ats-score?resume_id=${id}`, request);
   }
 
-  saveTailored(id: string, tailoredText: string, jobTitle: string, rawTextSnapshot: string): Observable<any> {
+  saveTailored(id: string, tailoredText: string, jobTitle: string, rawTextSnapshot: string, variantId?: string): Observable<any> {
     const apiUrl = '/api/v1/tailor/';
+    const body: any = { tailored_text: tailoredText, job_title: jobTitle, raw_text_snapshot: rawTextSnapshot };
+    if (variantId) body.variant_id = variantId;
     return this.http.post<any>(
       `${apiUrl}save-tailored?resume_id=${id}`,
-      { tailored_text: tailoredText, job_title: jobTitle, raw_text_snapshot: rawTextSnapshot }
+      body
     );
   }
 
@@ -105,7 +119,16 @@ export class ResumeService {
     return this.http.get<any>(`/api/v1/tailor/${id}/tailored/${versionIndex}`);
   }
 
-  downloadTailored(id: string, versionIndex: number, fmt: string = 'pdf', template: string = 'professional'): string {
-    return `/api/v1/tailor/${id}/tailored/${versionIndex}/download?fmt=${fmt}&template=${template}`;
+  getTailorVariants(id: string, request: TailorRequest): Observable<TailorVariantsResponse> {
+    const apiUrl = '/api/v1/tailor/';
+    return this.http.post<TailorVariantsResponse>(`${apiUrl}variants?resume_id=${id}`, request);
+  }
+
+  downloadTailored(id: string, versionIndex: number, fmt: string = 'pdf', template: string = 'professional', useOriginal: boolean = false): string {
+    let url = `/api/v1/tailor/${id}/tailored/${versionIndex}/download?fmt=${fmt}&template=${template}`;
+    if (useOriginal) {
+      url += `&use_original=true`;
+    }
+    return url;
   }
 }

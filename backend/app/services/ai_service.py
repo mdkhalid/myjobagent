@@ -41,6 +41,111 @@ Also return a comprehensive ATS score analysis with:
 - missing_keywords: list of important JD keywords missing from resume"""
 
 
+
+# ── Variant generation ──────────────────────────────────────────────────────
+
+VARIANTS_SYSTEM_PROMPT = """You are an expert ATS resume optimizer and career coach. Your job is to rewrite a candidate's resume to match a specific job description.
+
+You must return 3 COMPLETE tailored versions of the resume. Each version must be a FULL, complete resume text — not just suggestions.
+
+Variant 1 — "Keyword Optimized":
+- Maximize keyword density from the job description while reading naturally
+- Reorder bullet points to put the most relevant experience first
+- Add relevant keywords into the summary, experience bullets, and skills section
+- Keep all factual information accurate (dates, company names, degrees)
+
+Variant 2 — "Achievement Focused":
+- Quantify achievements wherever possible (%, $, time saved, team size)
+- Rewrite bullets to emphasize IMPACT rather than responsibilities
+- Use strong action verbs and measurable outcomes
+- Make the summary results-oriented with concrete metrics
+
+Variant 3 — "Concise & Impactful":
+- Tighten all language — remove filler words, weak verbs, redundancies
+- Keep bullet points short and punchy (1-2 lines max)
+- Prioritize only the most relevant experience for this job
+- Make every word count; remove any generic statements
+
+Rules for ALL variants:
+- Preserve ALL factual information: dates, company names, job titles, degrees, institutions
+- DO NOT fabricate experience or skills the candidate doesn't have
+- Output each variant as a COMPLETE resume with:
+  • Candidate name and contact at the top
+  • PROFESSIONAL SUMMARY section
+  • EXPERIENCE section (company, title, dates, location, bullet points)
+  • SKILLS section
+  • EDUCATION section
+- Keep the same section structure as the original resume
+- Use the exact same section header format (ALL CAPS with dashes)
+- Return valid JSON only
+
+Also return the ATS score analysis for each variant."""
+
+
+def tailor_resume_variants(
+    resume_text: str,
+    job_title: str,
+    job_description: str,
+    job_skills: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Generate 3 complete tailored resume variants with different strategies."""
+    client = _get_client()
+
+    skills_text = ", ".join(job_skills) if job_skills else "Not specified"
+
+    user_prompt = f"""## Job Description
+**Title:** {job_title}
+**Required Skills:** {skills_text}
+**Description:**
+{job_description}
+
+## Current Resume
+{resume_text}
+
+Generate 3 COMPLETE tailored resume variants following the instructions in the system prompt.
+
+Return valid JSON with this exact structure:
+{{
+  "variants": [
+    {{
+      "id": "keyword-optimized",
+      "label": "Keyword Optimized",
+      "description": "Maximized keyword density for ATS parsing",
+      "tailored_text": "FULL resume text version 1...",
+      "ats_score": {{ "overall": 85, "categories": {{ "keywords": 90, "formatting": 80, "experience": 75, "education": 85, "skills": 70 }}, "strengths": [], "improvements": [], "missing_keywords": [] }}
+    }},
+    {{
+      "id": "achievement-focused",
+      "label": "Achievement Focused",
+      "description": "Emphasizing quantified accomplishments and impact",
+      "tailored_text": "FULL resume text version 2...",
+      "ats_score": {{ ... }}
+    }},
+    {{
+      "id": "concise",
+      "label": "Concise & Impactful",
+      "description": "Tighter, punchier bullets with maximum impact",
+      "tailored_text": "FULL resume text version 3...",
+      "ats_score": {{ ... }}
+    }}
+  ]
+}}"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": VARIANTS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.4,
+        max_tokens=8000,
+    )
+
+    result = json.loads(response.choices[0].message.content)
+    return result
+
+
 def tailor_resume(
     resume_text: str,
     job_title: str,

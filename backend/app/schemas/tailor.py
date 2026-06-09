@@ -55,3 +55,18 @@ class SaveTailoredRequest(BaseModel):
     tailored_text: str
     job_title: str = ""
     raw_text_snapshot: str = ""
+    variant_id: Optional[str] = None  # keyword-optimized, achievement-focused, concise
+
+
+class VariantInfo(BaseModel):
+    """A single tailored variant."""
+    id: str
+    label: str
+    description: str
+    tailored_text: str
+    ats_score: AtsScore
+
+
+class TailorVariantsResponse(BaseModel):
+    """Response containing multiple tailored variants."""
+    variants: List[VariantInfo]
