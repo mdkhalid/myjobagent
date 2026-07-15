@@ -11,6 +11,9 @@ from app.api.v1 import auth, users, resumes, jobs, applications, automation, tra
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    # Validate secret key in production
+    settings.validate_secret_key()
+    
     Base.metadata.create_all(bind=engine)
     # Schema migration: add columns that may be missing on existing databases
     from app.db.migrate import run_migration

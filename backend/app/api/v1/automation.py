@@ -12,11 +12,13 @@ from app.models.application import Application, ApplicationStatus
 from app.services.auto_apply_service import AutoApplyService
 from app.services.matching_service import calculate_match_score
 from app.tasks.auto_apply_tasks import auto_apply_task
+from app.services.redis_service import (
+    get_automation_state_with_fallback,
+    set_automation_state_with_fallback,
+    delete_automation_state
+)
 
 router = APIRouter()
-
-# In-memory storage for automation status (use Redis in production)
-automation_status = {}
 
 
 class AutoApplySettings:
@@ -33,13 +35,8 @@ async def get_automation_status(
     current_user: User = Depends(get_current_user)
 ):
     user_id = str(current_user.id)
-    status = automation_status.get(user_id, {
-        "is_running": False,
-        "jobs_queued": 0,
-        "jobs_applied_today": 0,
-        "last_run": None
-    })
-    return status
+    state = get_automation_state_with_fallback(user_id)
+    return state
 
 
 @router.post("/start")
@@ -55,7 +52,8 @@ async def start_auto_apply(
     user_id = str(current_user.id)
     
     # Check if already running
-    if automation_status.get(user_id, {}).get("is_running", False):
+    current_state = get_automation_state_with_fallback(user_id)
+    if current_state.get("is_running", False):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Auto-apply is already running"
@@ -74,7 +72,7 @@ async def start_auto_apply(
         )
     
     # Update status
-    automation_status[user_id] = {
+    new_state = {
         "is_running": True,
         "min_match_score": min_match_score,
         "daily_limit": daily_limit,
@@ -85,6 +83,7 @@ async def start_auto_apply(
         "jobs_applied_today": 0,
         "last_run": datetime.now(timezone.utc).isoformat()
     }
+    set_automation_state_with_fallback(user_id, new_state)
     
     # Trigger auto-apply task (skip if broker not available)
     try:
@@ -127,10 +126,9 @@ async def stop_auto_apply(
 ):
     user_id = str(current_user.id)
     
-    if user_id not in automation_status:
-        automation_status[user_id] = {}
-    
-    automation_status[user_id]["is_running"] = False
+    current_state = get_automation_state_with_fallback(user_id)
+    current_state["is_running"] = False
+    set_automation_state_with_fallback(user_id, current_state)
     
     return {"message": "Auto-apply stopped"}
 
@@ -229,14 +227,14 @@ async def get_auto_apply_settings(
     current_user: User = Depends(get_current_user)
 ):
     user_id = str(current_user.id)
-    settings = automation_status.get(user_id, {
-        "min_match_score": 70.0,
-        "daily_limit": 10,
-        "companies_exclude": [],
-        "job_titles_target": [],
-        "auto_submit": False
-    })
-    return settings
+    state = get_automation_state_with_fallback(user_id)
+    return {
+        "min_match_score": state.get("min_match_score", 70.0),
+        "daily_limit": state.get("daily_limit", 10),
+        "companies_exclude": state.get("companies_exclude", []),
+        "job_titles_target": state.get("job_titles_target", []),
+        "auto_submit": state.get("auto_submit", False)
+    }
 
 
 @router.post("/settings")
@@ -246,10 +244,8 @@ async def update_auto_apply_settings(
 ):
     user_id = str(current_user.id)
     
-    if user_id not in automation_status:
-        automation_status[user_id] = {}
+    current_state = get_automation_state_with_fallback(user_id)
+    current_state.update(settings)
+    set_automation_state_with_fallback(user_id, current_state)
     
-    # Update settings
-    automation_status[user_id].update(settings)
-    
-    return {"message": "Settings updated", "settings": automation_status[user_id]}
+    return {"message": "Settings updated", "settings": current_state}

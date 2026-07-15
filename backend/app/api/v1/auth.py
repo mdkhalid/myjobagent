@@ -1,7 +1,9 @@
-from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import timedelta, datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
+from collections import defaultdict
+import time
 
 from app.db.session import get_db
 from app.core.security import (
@@ -17,16 +19,52 @@ from app.config import settings
 router = APIRouter()
 security = HTTPBearer()
 
+# In-memory rate limiting (use Redis in production for distributed systems)
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+RATE_LIMIT_MAX_REQUESTS = 10  # max requests per window
+
+
+def _check_rate_limit(request_key: str, max_requests: int = RATE_LIMIT_MAX_REQUESTS, window: int = RATE_LIMIT_WINDOW):
+    """Check and enforce rate limiting for a given key."""
+    now = time.time()
+    # Clean old entries outside the window
+    _rate_limit_store[request_key] = [
+        timestamp for timestamp in _rate_limit_store[request_key]
+        if now - timestamp < window
+    ]
+    
+    if len(_rate_limit_store[request_key]) >= max_requests:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {window} seconds.",
+            headers={"Retry-After": str(window)}
+        )
+    
+    _rate_limit_store[request_key].append(now)
+
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user with role-specific fields.
 
-    Supports three roles:
+    Supports two roles:
     - jobseeker: looking for jobs
     - company: looking to hire talent
-    - admin: platform administrator
+    
+    Note: Admin accounts must be created through the admin panel or CLI.
     """
+    # Rate limit by IP address
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(f"register:{client_ip}", max_requests=5, window=300)  # 5 registrations per 5 minutes
+    
+    # Prevent self-registration as admin
+    if user_data.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot be self-registered. Contact system administrator."
+        )
+    
     # Validate role-specific required fields
     if user_data.role == UserRole.COMPANY:
         if not user_data.company_name:
@@ -80,7 +118,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
+async def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
+    # Rate limit by IP address
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(f"login:{client_ip}", max_requests=10, window=60)  # 10 attempts per minute
+    
     # Find user
     user = db.query(User).filter(User.email == user_data.email).first()
     if not user:

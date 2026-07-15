@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+    
+    def validate_secret_key(self):
+        """Validate that SECRET_KEY has been changed from default in production."""
+        if not self.DEBUG and self.SECRET_KEY == "your-secret-key-change-in-production":
+            raise ValueError(
+                "SECRET_KEY must be changed from default in production! "
+                "Set SECRET_KEY environment variable or update .env file."
+            )
 
 
 @lru_cache()

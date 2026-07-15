@@ -297,6 +297,7 @@ import { TrackingService, TrackingStats, TimelineEntry } from '../../core/servic
     }
     .funnel-step {
       transition: width 0.5s ease;
+      min-width: 150px;
     }
     .funnel-bar {
       display: flex;
@@ -307,12 +308,14 @@ import { TrackingService, TrackingStats, TimelineEntry } from '../../core/servic
       background: var(--bg-card-hover);
       border: 1px solid var(--border);
       font-weight: 600;
+      box-sizing: border-box;
+      white-space: nowrap;
       &.applied { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); }
       &.interview { background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2); }
       &.offer { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.2); }
     }
-    .funnel-label { font-size: 14px; color: var(--text-secondary); }
-    .funnel-value { font-size: 18px; color: var(--text); }
+    .funnel-label { font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
+    .funnel-value { font-size: 18px; color: var(--text); white-space: nowrap; }
 
     .rates-grid {
       display: grid;
@@ -509,8 +512,7 @@ export class AnalyticsComponent implements OnInit {
   get offerPct(): number {
     return this.totalApplications > 0 ? (this.offerCount / this.totalApplications) * 100 : 0;
   }
-  get rejectionRate(): number {
-    const total = this.byStatus('rejected') + this.byStatus('applied') + this.byStatus('screening') + this.byStatus('interview') + this.byStatus('offer');
+  get rejectionRate(): number {    const total = this.byStatus('rejected') + this.byStatus('applied') + this.byStatus('screening') + this.byStatus('interview') + this.byStatus('offer');
     return total > 0 ? (this.byStatus('rejected') / total) * 100 : 0;
   }
 
